@@ -168,7 +168,7 @@ eval/
   tasks.json
   results/
     README.md
-    result_template.json
+    result_template.json.example
 
 tests/
   test_core_behavior.py

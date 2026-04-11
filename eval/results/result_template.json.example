@@ -1,0 +1,36 @@
+{
+  "run_id": "YYYYMMDDTHHMMSSZ",
+  "timestamp": "2026-04-11T00:00:00+00:00",
+  "git_commit": "<optional-sha>",
+  "configs": [
+    "no_plan_no_verify",
+    "plan_no_verify",
+    "plan_verify"
+  ],
+  "results": [
+    {
+      "task_id": "F01",
+      "category": "factual",
+      "question": "<task question>",
+      "config": "plan_verify",
+      "elapsed_seconds": 0.0,
+      "tool_calls": 0,
+      "num_sources": 0,
+      "num_sub_questions": 0,
+      "sub_questions": [],
+      "answer_text": "",
+      "sources": [],
+      "num_claims": 0,
+      "unverified_claims": [],
+      "unanswered_sub_questions": [],
+      "scores": {
+        "citation_accuracy": 0.0,
+        "completeness": 0.0,
+        "hallucination_rate": 0.0,
+        "tool_calls": 0
+      },
+      "error": null
+    }
+  ],
+  "notes": "TODO: Add run environment details (model version, retrieval parameters, prompt hash)."
+}
