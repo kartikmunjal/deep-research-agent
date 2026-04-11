@@ -9,9 +9,16 @@ with many sub-questions and sources.
 Citation format: [N] inline, with a numbered Sources list at the end.
 """
 
+from __future__ import annotations
+
 import json
 import re
-from anthropic import Anthropic
+from typing import Any
+
+try:
+    from anthropic import Anthropic
+except ImportError:  # pragma: no cover
+    Anthropic = Any  # type: ignore[assignment]
 
 from .models import Evidence
 
@@ -42,6 +49,8 @@ Format your response as valid JSON:
 
 
 class ResearchSynthesizer:
+    """Builds a cited answer from semantically compressed evidence."""
+
     def __init__(self, client: Anthropic, model: str):
         self.client = client
         self.model = model
@@ -51,20 +60,13 @@ class ResearchSynthesizer:
         question: str,
         sub_questions: list[str],
         evidence: list[Evidence],
-    ) -> tuple[str, list[str], list[dict]]:
-        """
-        Synthesize evidence into a cited answer.
-
-        Returns:
-            (answer_text, unanswered_sub_questions, sources) tuple
-            sources = [{"number": 1, "title": ..., "url": ...}, ...]
-        """
-        # Filter to only successful evidence
+    ) -> tuple[str, list[str], list[dict[str, object]]]:
+        """Return answer text, unanswered sub-questions, and source metadata."""
         good_evidence = [e for e in evidence if e.search_successful and e.extracted_text]
 
-        # Build numbered source list (deduplicated by URL)
+        # Build numbered source list (deduplicated by URL).
         seen_urls: dict[str, int] = {}
-        sources: list[dict] = []
+        sources: list[dict[str, object]] = []
         numbered_evidence: list[tuple[int, Evidence]] = []
 
         for ev in good_evidence:
@@ -74,11 +76,11 @@ class ResearchSynthesizer:
                 sources.append({"number": num, "title": ev.title, "url": ev.url})
             numbered_evidence.append((seen_urls[ev.url], ev))
 
-        # Identify sub-questions with no evidence
+        # Identify sub-questions with no evidence.
         covered_sq = {ev.sub_question for ev in good_evidence}
         failed_sq = [sq for sq in sub_questions if sq not in covered_sq]
 
-        # Build evidence block for the prompt
+        # Build evidence block for the prompt.
         evidence_block_lines = []
         for num, ev in numbered_evidence:
             evidence_block_lines.append(f"[{num}] {ev.title} ({ev.url})")

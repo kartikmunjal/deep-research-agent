@@ -15,9 +15,16 @@ Two failure modes this catches:
      not actually support the claim (a subtler form of hallucination)
 """
 
+from __future__ import annotations
+
 import json
 import re
-from anthropic import Anthropic
+from typing import Any
+
+try:
+    from anthropic import Anthropic
+except ImportError:  # pragma: no cover
+    Anthropic = Any  # type: ignore[assignment]
 
 from .models import Evidence, Claim
 
@@ -59,6 +66,8 @@ Extract between 3 and 15 claims. Focus on the most specific factual assertions."
 
 
 class ResearchVerifier:
+    """Extracts claims and verifies each claim against retrieved evidence."""
+
     def __init__(self, client: Anthropic, model: str):
         self.client = client
         self.model = model
@@ -69,25 +78,19 @@ class ResearchVerifier:
         evidence: list[Evidence],
         sources: list[dict],
     ) -> tuple[list[Claim], list[str]]:
-        """
-        Verify each factual claim in the answer against the retrieved evidence.
+        """Return claim-level verification judgments and unverified claim texts."""
+        _ = sources  # Included for interface stability and future citation-level checks.
 
-        Returns:
-            (claims, unverified_claim_texts) tuple
-        """
-        # Step 1: Extract claims from the answer
         claims_raw = self._extract_claims(answer_text)
         if not claims_raw:
             return [], []
 
-        # Step 2: Build evidence block for verification
         good_evidence = [e for e in evidence if e.search_successful and e.extracted_text]
         evidence_lines = []
         for i, ev in enumerate(good_evidence):
             evidence_lines.append(f"[E{i+1}] {ev.title}: {ev.extracted_text}")
         evidence_block = "\n".join(evidence_lines)
 
-        # Step 3: Verify all claims in a single pass
         claims_block = "\n".join(f"{i+1}. {c}" for i, c in enumerate(claims_raw))
 
         response = self.client.messages.create(
@@ -110,11 +113,10 @@ class ResearchVerifier:
 
         verified_results = json.loads(raw)
 
-        claims = []
-        unverified_texts = []
+        claims: list[Claim] = []
+        unverified_texts: list[str] = []
 
         for item in verified_results:
-            # Extract citation numbers from claim text (e.g., [1], [2])
             citation_matches = re.findall(r"\[(\d+)\]", item.get("claim", ""))
             citation_numbers = [int(m) for m in citation_matches]
 
@@ -132,6 +134,7 @@ class ResearchVerifier:
         return claims, unverified_texts
 
     def _extract_claims(self, answer_text: str) -> list[str]:
+        """Extract atomic factual claims from an answer."""
         response = self.client.messages.create(
             model=self.model,
             max_tokens=512,
@@ -147,4 +150,5 @@ class ResearchVerifier:
         raw = re.sub(r"^```(?:json)?\s*", "", raw)
         raw = re.sub(r"\s*```$", "", raw)
 
-        return json.loads(raw)
+        parsed = json.loads(raw)
+        return [str(claim) for claim in parsed]

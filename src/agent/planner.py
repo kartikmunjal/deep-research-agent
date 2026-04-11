@@ -7,9 +7,16 @@ each independently searchable. The decomposition improves both recall
 (each sub-question maps to a distinct section of the final answer).
 """
 
+from __future__ import annotations
+
 import json
 import re
-from anthropic import Anthropic
+from typing import Any
+
+try:
+    from anthropic import Anthropic
+except ImportError:  # pragma: no cover - allows local unit tests without SDK
+    Anthropic = Any  # type: ignore[assignment]
 
 
 DECOMPOSE_PROMPT = """You are a research planning assistant. Your job is to break a complex research question into focused sub-questions that together constitute a complete answer.
@@ -35,17 +42,14 @@ Research question: {question}"""
 
 
 class ResearchPlanner:
+    """Generates a search plan from an input research question."""
+
     def __init__(self, client: Anthropic, model: str):
         self.client = client
         self.model = model
 
     def decompose(self, question: str) -> tuple[list[str], str]:
-        """
-        Decompose a research question into sub-questions.
-
-        Returns:
-            (sub_questions, reasoning) tuple
-        """
+        """Return 3-5 focused sub-questions and brief planning rationale."""
         response = self.client.messages.create(
             model=self.model,
             max_tokens=512,
@@ -56,7 +60,7 @@ class ResearchPlanner:
 
         raw = response.content[0].text.strip()
 
-        # Strip markdown code fences if present
+        # Strip markdown code fences if present.
         raw = re.sub(r"^```(?:json)?\s*", "", raw)
         raw = re.sub(r"\s*```$", "", raw)
 
@@ -64,4 +68,7 @@ class ResearchPlanner:
         sub_questions = parsed["sub_questions"]
         reasoning = parsed.get("reasoning", "")
 
-        return sub_questions, reasoning
+        if not isinstance(sub_questions, list) or not sub_questions:
+            raise ValueError("Planner returned invalid sub_questions payload")
+
+        return [str(sq) for sq in sub_questions], str(reasoning)

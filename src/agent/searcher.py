@@ -19,9 +19,19 @@ and retries once. If the retry also fails, the sub-question is marked
 as unresolved and explicitly flagged in the final answer.
 """
 
-import re
-from anthropic import Anthropic
-from tavily import TavilyClient
+from __future__ import annotations
+
+from typing import Any
+
+try:
+    from anthropic import Anthropic
+except ImportError:  # pragma: no cover
+    Anthropic = Any  # type: ignore[assignment]
+
+try:
+    from tavily import TavilyClient
+except ImportError:  # pragma: no cover
+    TavilyClient = Any  # type: ignore[assignment]
 
 from .models import Evidence
 
@@ -49,6 +59,8 @@ Respond with only the reformulated query. No explanation."""
 
 
 class ResearchSearcher:
+    """Retrieves candidate pages and extracts semantically relevant evidence."""
+
     def __init__(
         self,
         anthropic_client: Anthropic,
@@ -64,25 +76,20 @@ class ResearchSearcher:
         self.max_content_chars = max_content_chars
 
     def search(self, sub_question: str) -> tuple[list[Evidence], int]:
-        """
-        Search for evidence relevant to a sub-question.
-
-        Returns:
-            (evidence_list, tool_call_count) tuple
-        """
+        """Search and extract evidence for one sub-question."""
         tool_calls = 0
         evidence, calls = self._search_and_extract(sub_question, sub_question)
         tool_calls += calls
 
         if not evidence:
-            # Reformulate and retry once
+            # Reformulate and retry once.
             reformulated = self._reformulate(sub_question)
             tool_calls += 1
             evidence, calls = self._search_and_extract(sub_question, reformulated)
             tool_calls += calls
 
         if not evidence:
-            # Mark as unresolved — pipeline will surface this in the final answer
+            # Mark as unresolved — pipeline will surface this in the final answer.
             evidence = [
                 Evidence(
                     url="",
@@ -98,6 +105,7 @@ class ResearchSearcher:
     def _search_and_extract(
         self, sub_question: str, query: str
     ) -> tuple[list[Evidence], int]:
+        """Run web search and LLM extraction over results."""
         tool_calls = 0
 
         try:
@@ -139,6 +147,7 @@ class ResearchSearcher:
         return evidence, tool_calls
 
     def _extract_relevant(self, sub_question: str, title: str, content: str) -> str:
+        """Extract only sentences that inform the sub-question."""
         response = self.anthropic.messages.create(
             model=self.model,
             max_tokens=400,
@@ -156,6 +165,7 @@ class ResearchSearcher:
         return response.content[0].text.strip()
 
     def _reformulate(self, query: str) -> str:
+        """Ask the model to rewrite a failed query once."""
         response = self.anthropic.messages.create(
             model=self.model,
             max_tokens=128,

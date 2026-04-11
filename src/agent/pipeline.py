@@ -2,7 +2,7 @@
 Research Pipeline
 
 Orchestrates the four-stage research loop:
-  Planner → Searcher → Synthesizer → Verifier
+  Planner -> Searcher -> Synthesizer -> Verifier
 
 Design decisions:
   - Planning is optional (skip_planning=True runs direct synthesis for ablation)
@@ -12,9 +12,20 @@ Design decisions:
     unresolved sub-questions explicitly in the final ResearchAnswer
 """
 
+from __future__ import annotations
+
 import os
-from anthropic import Anthropic
-from tavily import TavilyClient
+from typing import Any
+
+try:
+    from anthropic import Anthropic
+except ImportError:  # pragma: no cover
+    Anthropic = Any  # type: ignore[assignment]
+
+try:
+    from tavily import TavilyClient
+except ImportError:  # pragma: no cover
+    TavilyClient = Any  # type: ignore[assignment]
 
 from .models import ResearchAnswer, Evidence
 from .planner import ResearchPlanner
@@ -53,6 +64,8 @@ def _format_output(answer: ResearchAnswer) -> str:
 
 
 class ResearchPipeline:
+    """End-to-end orchestrator for planning, retrieval, synthesis, and verification."""
+
     def __init__(
         self,
         anthropic_api_key: str | None = None,
@@ -82,26 +95,14 @@ class ResearchPipeline:
         skip_verification: bool = False,
         verbose: bool = False,
     ) -> ResearchAnswer:
-        """
-        Run the full research pipeline on a question.
-
-        Args:
-            question: The research question to answer
-            skip_planning: If True, treat the question itself as a single sub-question
-                           (used for ablation comparison)
-            skip_verification: If True, skip the claim-level grounding pass
-            verbose: Print progress to stdout
-
-        Returns:
-            ResearchAnswer with answer text, citations, and verification results
-        """
+        """Run the full research pipeline and return structured output."""
         tool_calls = 0
 
         # Stage 1: Planning
         if skip_planning:
             sub_questions = [question]
             if verbose:
-                print("[planner] skipped — using question directly")
+                print("[planner] skipped - using question directly")
         else:
             if verbose:
                 print("[planner] decomposing question...")
@@ -150,7 +151,7 @@ class ResearchPipeline:
                     f"{len(unverified_texts)} flagged"
                 )
 
-        result = ResearchAnswer(
+        return ResearchAnswer(
             question=question,
             sub_questions=sub_questions,
             evidence=all_evidence,
@@ -162,8 +163,6 @@ class ResearchPipeline:
             tool_calls=tool_calls,
         )
 
-        return result
-
     def run_formatted(
         self,
         question: str,
@@ -171,6 +170,6 @@ class ResearchPipeline:
         skip_verification: bool = False,
         verbose: bool = True,
     ) -> str:
-        """Run the pipeline and return a formatted string result."""
+        """Run the pipeline and return a formatted markdown result."""
         result = self.run(question, skip_planning, skip_verification, verbose)
         return _format_output(result)
