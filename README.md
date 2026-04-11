@@ -14,6 +14,8 @@ These are the current reference metrics from the repository's latest documented 
 
 Unanswerable behavior (full pipeline): uncertainty correctly surfaced in **87.5%** of tasks.
 
+Refresh status: pending first committed timestamped eval artifact; see `eval/results/FIRST_TIMESTAMPED_RUN.md`.
+
 ## Why This Matters
 
 Most LLM demos optimize for fluent final answers. This project focuses on a harder engineering target: auditable answers where each claim is traceable, uncertainty is explicit, and failure modes are measurable.
