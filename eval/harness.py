@@ -4,9 +4,9 @@ Evaluation Harness
 Runs the research pipeline on every task in tasks.json across three
 ablation configurations:
 
-  1. no_plan_no_verify  — direct synthesis, no verification pass
-  2. plan_no_verify     — planning + search, no verification
-  3. plan_verify        — full pipeline (planning + search + verification)
+  1. no_plan_no_verify  - direct synthesis, no verification pass
+  2. plan_no_verify     - planning + search, no verification
+  3. plan_verify        - full pipeline (planning + search + verification)
 
 Results are written to eval/results/{run_id}.json for offline analysis.
 
@@ -14,12 +14,14 @@ Usage:
     python -m eval.harness                    # full eval, all tasks
     python -m eval.harness --category factual # one category only
     python -m eval.harness --task-ids F01 M03 # specific tasks
-    python -m eval.harness --config plan_verify --dry-run  # print tasks only
+    python -m eval.harness --configs plan_verify --dry-run  # print tasks only
 """
+
+from __future__ import annotations
 
 import argparse
 import json
-import os
+import subprocess
 import sys
 import time
 import traceback
@@ -40,6 +42,20 @@ CONFIGS = {
 }
 
 RESULTS_DIR = Path(__file__).parent / "results"
+
+
+def _get_git_commit() -> str:
+    """Return current git commit hash, if available."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return result.stdout.strip()
+    except Exception:
+        return "unknown"
 
 
 def load_tasks(
@@ -66,6 +82,7 @@ def run_eval(
     task_ids: list[str] | None = None,
     dry_run: bool = False,
     verbose: bool = False,
+    model: str = "claude-sonnet-4-6",
 ) -> dict:
     configs = configs or list(CONFIGS.keys())
     tasks = load_tasks(category, task_ids)
@@ -74,19 +91,21 @@ def run_eval(
         print("No tasks matched the filters.")
         return {}
 
-    print(f"Running {len(tasks)} tasks × {len(configs)} configs = {len(tasks) * len(configs)} runs")
+    print(f"Running {len(tasks)} tasks x {len(configs)} configs = {len(tasks) * len(configs)} runs")
 
     if dry_run:
         for t in tasks:
             print(f"  [{t['id']}] {t['category']}: {t['question'][:70]}...")
         return {}
 
-    pipeline = ResearchPipeline()
+    pipeline = ResearchPipeline(model=model)
 
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     all_results = {
         "run_id": run_id,
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "git_commit": _get_git_commit(),
+        "model": model,
         "configs": configs,
         "results": [],
     }
@@ -132,7 +151,7 @@ def run_eval(
                 )
 
                 print(
-                    f"  ✓ {elapsed:.1f}s | sources={len(answer.sources)} | "
+                    f"  ok {elapsed:.1f}s | sources={len(answer.sources)} | "
                     f"claims={len(answer.claims)} | "
                     f"hallucination_rate={scores['hallucination_rate']:.2f} | "
                     f"completeness={scores['completeness']:.2f}"
@@ -147,11 +166,10 @@ def run_eval(
                         "scores": None,
                     }
                 )
-                print(f"  ✗ ERROR: {e}")
+                print(f"  error: {e}")
 
             all_results["results"].append(entry)
 
-    # Persist results
     RESULTS_DIR.mkdir(exist_ok=True)
     out_path = RESULTS_DIR / f"{run_id}.json"
     with open(out_path, "w") as f:
@@ -207,6 +225,7 @@ if __name__ == "__main__":
     parser.add_argument("--task-ids", nargs="+")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--model", default="claude-sonnet-4-6")
     args = parser.parse_args()
 
     run_eval(
@@ -215,4 +234,5 @@ if __name__ == "__main__":
         task_ids=args.task_ids,
         dry_run=args.dry_run,
         verbose=args.verbose,
+        model=args.model,
     )
