@@ -123,25 +123,44 @@ cp .env.example .env
 python demo.py "How did RLHF change LLM alignment research?"
 ```
 
-### 4. Run eval harness
+### 4. Run eval harness (paid API mode)
 
 ```bash
 python -m eval.harness
 ```
 
-### 5. Summarize latest run into a table
+### 5. Zero-cost offline eval (no API calls)
+
+```bash
+python3 -m eval.harness --offline
+```
+
+This writes a timestamped synthetic artifact marked `result_mode=offline_fixture` for smoke testing only.
+
+### 6. Summarize latest run into a table
 
 ```bash
 python -m eval.summarize_results --latest
 ```
 
-### 6. Optional Makefile shortcuts
+### 7. Optional Makefile shortcuts
 
 ```bash
 make demo QUESTION="How did RLHF change LLM alignment research?"
 make eval
+make eval-offline
 make summarize-latest
 make test
+```
+
+
+## Zero-Cost Workflow
+
+Use these two commands when you want reproducibility checks without spending on API calls:
+
+```bash
+python3 -m pytest -q
+python3 -m eval.harness --offline
 ```
 
 ## Quickstart

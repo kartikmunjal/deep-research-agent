@@ -1,4 +1,4 @@
-.PHONY: install install-dev demo eval summarize-latest test
+.PHONY: install install-dev demo eval eval-offline summarize-latest test
 
 install:
 	pip install -r requirements.txt
@@ -11,6 +11,9 @@ demo:
 
 eval:
 	python -m eval.harness
+
+eval-offline:
+	python3 -m eval.harness --offline
 
 summarize-latest:
 	python -m eval.summarize_results --latest
