@@ -2,9 +2,9 @@
 
 A modular deep-research pipeline that decomposes a question into sub-questions, retrieves and semantically compresses evidence, synthesizes a cited answer, and verifies each factual claim against evidence before returning results.
 
-## Best Current Results (Reference)
+## Historical Benchmark Snapshot (Reference)
 
-These are the current reference metrics from the repository's latest documented run setup (28 tasks: factual, multi-hop, unanswerable). Use the reproducibility commands below to generate fresh result files and update this table from tracked artifacts in `eval/results/`.
+These are historical reference metrics from an earlier live API benchmark setup (28 tasks: factual, multi-hop, unanswerable). Treat them as context, not as the current run-state in this branch.
 
 | Configuration | Citation Accuracy | Completeness | Hallucination Rate | Avg Tool Calls |
 |---|:---:|:---:|:---:|:---:|
@@ -14,7 +14,13 @@ These are the current reference metrics from the repository's latest documented 
 
 Unanswerable behavior (full pipeline): uncertainty correctly surfaced in **87.5%** of tasks.
 
-Refresh status: pending first committed timestamped eval artifact; see `eval/results/FIRST_TIMESTAMPED_RUN.md`.
+For portfolio rigor, only treat summaries from `result_mode=live_api` as benchmark claims. Offline fixture runs are for zero-cost smoke testing only.
+
+## Result Integrity
+
+- `live_api` artifacts are the only acceptable source for benchmark claims.
+- `offline_fixture` artifacts are deterministic synthetic outputs for local smoke validation.
+- Keep both modes in the repo, but never report offline metrics as model performance.
 
 ## Why This Matters
 
@@ -141,6 +147,12 @@ This writes a timestamped synthetic artifact marked `result_mode=offline_fixture
 
 ```bash
 python -m eval.summarize_results --latest
+```
+
+To enforce benchmark-only summaries:
+
+```bash
+python -m eval.summarize_results --latest --mode live_api --require-live
 ```
 
 ### 7. Optional Makefile shortcuts

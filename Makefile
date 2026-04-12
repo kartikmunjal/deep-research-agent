@@ -1,4 +1,4 @@
-.PHONY: install install-dev demo eval eval-offline summarize-latest test
+.PHONY: install install-dev demo eval eval-offline summarize-latest summarize-live test
 
 install:
 	pip install -r requirements.txt
@@ -20,3 +20,7 @@ summarize-latest:
 
 test:
 	python -m pytest -q
+
+
+summarize-live:
+	python -m eval.summarize_results --latest --mode live_api --require-live

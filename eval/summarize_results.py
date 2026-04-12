@@ -2,6 +2,7 @@
 
 Usage:
     python -m eval.summarize_results --latest
+    python -m eval.summarize_results --latest --mode live_api --require-live
     python -m eval.summarize_results --file eval/results/20260411T120000Z.json
     python -m eval.summarize_results --latest --export-json eval/results/summary.json
 """
@@ -19,16 +20,34 @@ RESULTS_DIR = Path(__file__).parent / "results"
 RUN_FILE_PATTERN = re.compile(r"^\d{8}T\d{6}Z\.json$")
 
 
-def _latest_result_file() -> Path:
-    files = sorted(
+def _run_mode(run: dict) -> str:
+    return str(run.get("result_mode", "unknown"))
+
+
+def _latest_result_file(mode: str = "any") -> Path:
+    candidates = sorted(
         p for p in RESULTS_DIR.glob("*.json") if RUN_FILE_PATTERN.match(p.name)
     )
-    if not files:
+    if mode == "any":
+        if not candidates:
+            raise FileNotFoundError(
+                "No timestamped result JSON files found in eval/results. "
+                "Run `python -m eval.harness` first."
+            )
+        return candidates[-1]
+
+    filtered: list[Path] = []
+    for path in candidates:
+        run = _load(path)
+        if _run_mode(run) == mode:
+            filtered.append(path)
+
+    if not filtered:
         raise FileNotFoundError(
-            "No timestamped result JSON files found in eval/results. "
-            "Run `python -m eval.harness` first."
+            f"No timestamped result JSON files found in eval/results with result_mode={mode}."
         )
-    return files[-1]
+
+    return filtered[-1]
 
 
 def _load(path: Path) -> dict:
@@ -108,23 +127,48 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Summarize eval results")
     parser.add_argument("--file", type=str, help="Path to a results JSON file")
     parser.add_argument("--latest", action="store_true", help="Use latest results JSON in eval/results")
+    parser.add_argument(
+        "--mode",
+        choices=["any", "live_api", "offline_fixture"],
+        default="any",
+        help="Filter latest run selection by result_mode when using --latest",
+    )
+    parser.add_argument(
+        "--require-live",
+        action="store_true",
+        help="Exit non-zero if the selected run is not result_mode=live_api",
+    )
     parser.add_argument("--export-json", type=str, help="Optional path to write machine-readable summary")
     args = parser.parse_args()
 
     if args.file and args.latest:
         raise SystemExit("Use either --file or --latest, not both")
 
-    if args.file:
-        path = Path(args.file)
-    else:
-        path = _latest_result_file()
+    try:
+        if args.file:
+            path = Path(args.file)
+        else:
+            path = _latest_result_file(mode=args.mode)
+    except FileNotFoundError as exc:
+        raise SystemExit(str(exc))
 
     run = _load(path)
+    mode = _run_mode(run)
+
+    if args.require_live and mode != "live_api":
+        raise SystemExit(
+            f"Selected run is result_mode={mode}. Re-run with --mode live_api after a paid benchmark run."
+        )
+
     by_config = _summarize(run)
     by_category = _summarize_by_category(run)
 
     print(f"Run ID: {run.get('run_id', 'unknown')}")
     print(f"File: {path}")
+    print(f"Result Mode: {mode}")
+    if mode == "offline_fixture":
+        print("WARNING: offline_fixture metrics are synthetic smoke-run outputs, not benchmark claims.")
+
     print("\nBy Config")
     print(_to_markdown(by_config))
     print("\nBy Category")
@@ -134,6 +178,7 @@ def main() -> None:
         payload = {
             "run_id": run.get("run_id", "unknown"),
             "source_file": str(path),
+            "result_mode": mode,
             "by_config": by_config,
             "by_category": by_category,
         }
