@@ -19,12 +19,10 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any
+from typing import TYPE_CHECKING
 
-try:
+if TYPE_CHECKING:
     from anthropic import Anthropic
-except ImportError:  # pragma: no cover
-    Anthropic = Any  # type: ignore[assignment]
 
 from .models import Evidence, Claim
 

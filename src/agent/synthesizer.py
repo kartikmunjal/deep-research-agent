@@ -13,12 +13,10 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any
+from typing import TYPE_CHECKING
 
-try:
+if TYPE_CHECKING:
     from anthropic import Anthropic
-except ImportError:  # pragma: no cover
-    Anthropic = Any  # type: ignore[assignment]
 
 from .models import Evidence
 
@@ -37,6 +35,9 @@ Instructions:
 - Write a structured answer that addresses all sub-questions
 - Use inline citations [N] wherever you make a factual claim
 - Every factual claim must be supported by at least one citation
+- If sources contradict each other, present both positions with their respective
+  citations rather than picking one — explicitly flag the conflict and explain
+  why the evidence disagrees (different study designs, time periods, methodologies)
 - If a sub-question could not be answered due to missing evidence, state that explicitly
 - Do NOT invent facts or extrapolate beyond what the evidence supports
 - Be concise but complete — aim for 300-500 words

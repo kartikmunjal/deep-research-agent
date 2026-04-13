@@ -11,12 +11,10 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any
+from typing import TYPE_CHECKING
 
-try:
+if TYPE_CHECKING:
     from anthropic import Anthropic
-except ImportError:  # pragma: no cover - allows local unit tests without SDK
-    Anthropic = Any  # type: ignore[assignment]
 
 
 DECOMPOSE_PROMPT = """You are a research planning assistant. Your job is to break a complex research question into focused sub-questions that together constitute a complete answer.

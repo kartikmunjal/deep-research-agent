@@ -21,17 +21,11 @@ as unresolved and explicitly flagged in the final answer.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 
-try:
+if TYPE_CHECKING:
     from anthropic import Anthropic
-except ImportError:  # pragma: no cover
-    Anthropic = Any  # type: ignore[assignment]
-
-try:
     from tavily import TavilyClient
-except ImportError:  # pragma: no cover
-    TavilyClient = Any  # type: ignore[assignment]
 
 from .models import Evidence
 

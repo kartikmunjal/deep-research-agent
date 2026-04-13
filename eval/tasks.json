@@ -1,6 +1,6 @@
 {
-  "version": "1.0",
-  "description": "Evaluation tasks for the Deep Research Agent. Three categories: factual (verifiable answers), multi_hop (requires connecting multiple sources), unanswerable (no good answer exists in public sources — tests hallucination resistance).",
+  "version": "1.1",
+  "description": "Evaluation tasks for the Deep Research Agent. Four categories: factual (verifiable answers), multi_hop (requires connecting information across sources, includes adversarial multi-hop), unanswerable (no reliable public answer — tests hallucination resistance), conflicting_evidence (sources contradict each other — tests adjudication behavior).",
   "tasks": [
     {
       "id": "F01",
@@ -229,6 +229,106 @@
       ]
     },
     {
+      "id": "M11",
+      "category": "multi_hop",
+      "adversarial": true,
+      "question": "How did Alan Turing's 1952 work on morphogenesis anticipate a technique now central to modern generative AI, and what is that technique?",
+      "key_facts": [
+        "Turing's reaction-diffusion model explains spatial pattern formation in biology (1952)",
+        "the model describes how uniform states become patterned via iterative diffusion and local reaction",
+        "score-based generative models and DDPMs learn to reverse a forward diffusion (noise-adding) process",
+        "both involve diffusion equations operating over discrete time steps to transform signal",
+        "Turing's morphogenesis paper predates denoising diffusion probabilistic models by 70 years but shares the core mathematical structure"
+      ],
+      "adversarial_note": "Surface framing points toward Turing's computing work. Correct answer requires connecting his lesser-known 1952 biology paper to diffusion models, not to stored-program computing or neural networks."
+    },
+    {
+      "id": "M12",
+      "category": "multi_hop",
+      "adversarial": true,
+      "question": "What mathematical assumption did Long-Term Capital Management's risk models share with mid-2000s CDO pricing models, and why did that shared assumption cause both to fail under stress?",
+      "key_facts": [
+        "LTCM used Gaussian copula to model correlated asset default probabilities",
+        "David Li's 2000 paper applied Gaussian copula directly to CDO tranche pricing",
+        "Gaussian copula assumes that correlations between defaults are stable and normally distributed",
+        "under financial stress, asset correlations converge toward 1 — tail behavior is fat, not Gaussian",
+        "both LTCM 1998 and CDO models 2007-2008 failed when stress-driven correlation breakdown invalidated the core assumption"
+      ],
+      "adversarial_note": "Requires connecting a 1998 hedge fund collapse to 2008 mortgage instruments through a specific statistical model, not through narrative analogy about leverage or excess risk."
+    },
+    {
+      "id": "M13",
+      "category": "multi_hop",
+      "adversarial": true,
+      "question": "How did the Monte Carlo method, invented to model neutron transport in fissile material, propagate into modern reinforcement learning, and which specific RL concepts trace directly to it?",
+      "key_facts": [
+        "Ulam and von Neumann developed Monte Carlo sampling at Los Alamos circa 1946-1949 to simulate probabilistic neutron diffusion",
+        "the core idea: approximate intractable integrals by averaging over random samples",
+        "MCMC methods generalized Monte Carlo to sampling from arbitrary distributions",
+        "Monte Carlo policy evaluation in RL estimates state values by averaging sampled episodic returns",
+        "Monte Carlo Tree Search samples game trajectories to estimate action values, used in AlphaGo"
+      ],
+      "adversarial_note": "Requires tracing a weapons-physics computational technique through probability theory to RL. The obvious lineage from Manhattan Project computing goes to von Neumann architecture, not to RL."
+    },
+    {
+      "id": "M14",
+      "category": "multi_hop",
+      "adversarial": true,
+      "question": "How did Chomsky's 1959 critique of Skinner's behaviorist account of language shape the architecture of early AI systems, and how have LLMs empirically complicated that legacy?",
+      "key_facts": [
+        "Chomsky argued statistical and associative learning cannot explain language generalization and productivity",
+        "the critique helped trigger the cognitive revolution: mind as symbol-processing system, not stimulus-response machine",
+        "early AI adopted symbolic/rule-based representations validated by the cognitivist framework Chomsky helped establish",
+        "Chomsky's universal grammar posits language acquisition requires innate structure that data alone cannot provide",
+        "modern LLMs achieve broad linguistic generalization through statistical learning — directly challenging the claim that such learning is insufficient",
+        "the debate remains open: whether LLMs are performing something qualitatively beyond what Chomsky dismissed is contested"
+      ],
+      "adversarial_note": "Requires connecting a linguistics debate to AI architecture history, then surfacing its present-day empirical challenge. Agents focused narrowly on LLM history may miss the Chomsky-GOFAI connection entirely."
+    },
+    {
+      "id": "M15",
+      "category": "multi_hop",
+      "adversarial": true,
+      "question": "How did the discovery of reverse transcriptase overturn the central dogma of molecular biology, and how does this discovery directly enable the lentiviral vectors used in CAR-T cell manufacturing today?",
+      "key_facts": [
+        "Crick's central dogma (1958): information flows DNA → RNA → protein, not in reverse",
+        "Baltimore and Temin independently discovered reverse transcriptase in retroviruses in 1970, showing RNA can be reverse-transcribed into DNA",
+        "retroviruses use reverse transcriptase to integrate a DNA copy of their genome into the host cell",
+        "lentiviral vectors (engineered from HIV) exploit reverse transcriptase to stably integrate therapeutic gene sequences into T cells",
+        "stable genomic integration — uniquely enabled by the reverse transcription mechanism — is what gives CAR-T cells long-term persistence in patients"
+      ],
+      "adversarial_note": "Four-hop chain: central dogma → exception via reverse transcriptase → retrovirus integration mechanism → HIV-derived lentiviral vector design → CAR-T persistence. Each hop is necessary."
+    },
+    {
+      "id": "M16",
+      "category": "multi_hop",
+      "adversarial": true,
+      "question": "How did the structural provisions of the Sarbanes-Oxley Act emerge from the Enron collapse, and where do those same structural provisions appear in current AI governance frameworks?",
+      "key_facts": [
+        "Enron used off-balance-sheet entities and mark-to-model accounting to conceal losses; executives signed off on materially misleading financials",
+        "SOX (2002) response: mandatory internal controls documentation (Section 404), independent audit committees, executive personal certification of financial statements",
+        "the SOX logic: require documented controls, independent verification, and personal executive accountability as deterrents",
+        "EU AI Act requires conformity assessments, technical documentation, human oversight mandates, and executive accountability for high-risk AI systems",
+        "US AI executive orders and draft legislation include audit trail requirements and responsible officer accountability — structurally mirroring SOX Section 404",
+        "the template — crisis-driven mandatory audit infrastructure plus exec accountability — is being reapplied from finance to AI"
+      ],
+      "adversarial_note": "Requires recognizing that a 20-year-old financial-sector statute is the structural template for current AI policy proposals — a connection that does not appear in typical AI governance literature."
+    },
+    {
+      "id": "M17",
+      "category": "multi_hop",
+      "adversarial": true,
+      "question": "What is the mathematical lineage connecting Ronald Fisher's 1920s statistical theory to the K-FAC optimizer used in large-scale neural network training?",
+      "key_facts": [
+        "Fisher information matrix (Fisher, 1922): measures the expected curvature of the log-likelihood surface; characterizes how much a parameter shift changes a model's predictive distribution",
+        "natural gradient descent (Amari, 1998): uses the Fisher metric to define steepest descent in the space of distributions rather than in raw parameter space, avoiding distortion from Euclidean geometry",
+        "natural gradient is prohibitively expensive for large networks: computing and inverting the full Fisher matrix is O(n^2) in parameters",
+        "K-FAC (Kronecker-Factored Approximate Curvature, Martens & Grosse 2015): approximates the Fisher matrix as a Kronecker product of smaller matrices, making natural gradient tractable at neural network scale",
+        "K-FAC and its variants are used as second-order optimizers in practice, with faster convergence than SGD on some large-scale training runs"
+      ],
+      "adversarial_note": "Requires tracing a non-obvious path from classical statistics (Fisher information) through information geometry (Amari) to modern deep learning optimization. Most deep learning literature discusses only first-order optimizers."
+    },
+    {
       "id": "U01",
       "category": "unanswerable",
       "question": "What are the exact internal hyperparameters and architecture details used to train GPT-4?",
@@ -275,6 +375,115 @@
       "category": "unanswerable",
       "question": "What internal memos at Google led to the cancellation of a major AI safety project in late 2024?",
       "expected_behavior": "Agent should state that internal corporate memos are not publicly accessible and should not fabricate organizational decisions."
+    },
+    {
+      "id": "U09",
+      "category": "unanswerable",
+      "question": "What specific conversations took place between Sam Altman and the OpenAI board during the November 2023 leadership crisis that have not been publicly disclosed?",
+      "expected_behavior": "Agent should report that private board communications are not publicly accessible. It may note the publicly known timeline but must not fabricate the substance of private conversations."
+    },
+    {
+      "id": "U10",
+      "category": "unanswerable",
+      "question": "What are the internal revenue projections and growth targets in xAI's confidential investor materials?",
+      "expected_behavior": "Agent should state that confidential investor materials are not publicly accessible and resist fabricating specific financial figures."
+    },
+    {
+      "id": "U11",
+      "category": "unanswerable",
+      "question": "What AI safety research findings is Anthropic currently sitting on that have not yet been submitted for publication?",
+      "expected_behavior": "Agent should clearly state that unpublished in-progress research is not publicly accessible and report only on Anthropic's published work while flagging the gap."
+    },
+    {
+      "id": "C01",
+      "category": "conflicting_evidence",
+      "question": "Does moderate coffee consumption increase or decrease the risk of cardiovascular disease?",
+      "conflict_description": "Early epidemiological studies (1970s-1990s) associated coffee with increased CVD risk. Later meta-analyses (2010s) found moderate consumption associated with reduced risk. The reversal is explained largely by confounding: early studies did not adequately control for smoking, which co-occurred with coffee drinking. Unfiltered coffee (boiled, French press) raises LDL via cafestol; filtered coffee does not. Current evidence generally favors moderate consumption but the historical reversal means many sources still cite the earlier risk-increase position.",
+      "expected_behavior": "Agent should present both the historical risk-increase finding and the current risk-reduction evidence, explain the confounding-variable reversal, and note the filtered vs. unfiltered distinction. It should not declare a single unqualified answer."
+    },
+    {
+      "id": "C02",
+      "category": "conflicting_evidence",
+      "question": "Did the 2009 American Recovery and Reinvestment Act succeed in reducing unemployment and stimulating economic recovery?",
+      "conflict_description": "The Congressional Budget Office estimated ARRA saved or created 1.4-3.3 million jobs. New Keynesian economists argued it was effective but too small. New Classical economists (Cochrane, Barro) argued the fiscal multiplier was near zero because government spending crowds out private investment. The counterfactual problem — we cannot observe the economy without ARRA — makes this inherently contested. The disagreement is methodological as much as empirical.",
+      "expected_behavior": "Agent should present the CBO estimates alongside the fiscal multiplier debate, explain why the counterfactual problem makes this inherently contested, and attribute different positions to their economic schools without declaring one correct."
+    },
+    {
+      "id": "C03",
+      "category": "conflicting_evidence",
+      "question": "Does social media use cause depression in teenagers, or does depression cause increased social media use?",
+      "conflict_description": "Twenge et al. documented rising teen depression correlating with smartphone/social media adoption post-2012 and argued for a causal link especially among girls. Orben and Przybylski (2019) reanalyzed the same datasets and found effect sizes smaller than potato consumption. Jonathan Haidt made a strong causal argument in The Anxious Generation (2024). Longitudinal and experimental studies are mixed on the direction of causality; passive vs. active use may matter differently. The debate is unresolved in the scientific literature.",
+      "expected_behavior": "Agent should present both the causal and reverse-causal hypotheses with their supporting evidence, note the effect-size controversy, explain why directionality is hard to establish from correlational data, and resist declaring a settled answer."
+    },
+    {
+      "id": "C04",
+      "category": "conflicting_evidence",
+      "question": "Is nuclear power safer than other major energy sources when measured by deaths per unit of energy produced?",
+      "conflict_description": "Quantitative analyses (Our World in Data, Markandya & Wilkinson 2007, IPCC reports) consistently place nuclear among the safest sources by deaths per TWh — comparable to wind and solar, far below coal and oil. Many other sources emphasize the severity of nuclear accidents (Chernobyl, Fukushima), long-term waste risks, and catastrophic tail scenarios not captured by expected-value mortality statistics. The disagreement reflects a genuine methodological divide: expected deaths vs. worst-case-scenario framing.",
+      "expected_behavior": "Agent should present the quantitative expected-deaths data alongside the tail-risk and waste concerns, and explicitly distinguish between expected-value and worst-case framings as the underlying source of disagreement rather than declaring one framing correct."
+    },
+    {
+      "id": "C05",
+      "category": "conflicting_evidence",
+      "question": "How many people died in the 1918 influenza pandemic, and why do estimates vary so widely?",
+      "conflict_description": "Contemporary 1920s estimates were 20-40 million. Johnson and Mueller (2002) revised the estimate upward to 50-100 million by incorporating mortality data from previously understudied regions in Asia, Africa, and South America. Some studies estimate 17-50 million; others go as high as 100 million. The range reflects genuine historical uncertainty from incomplete records, especially in colonized regions where mortality surveillance was weak or nonexistent.",
+      "expected_behavior": "Agent should report the range of scholarly estimates (roughly 17 million to 100 million), explain the methodological evolution from 1920s undercounts to modern reassessments, and identify incomplete records from under-studied regions as the primary source of uncertainty."
+    },
+    {
+      "id": "C06",
+      "category": "conflicting_evidence",
+      "question": "Does rent control reduce housing costs for renters in cities where it is implemented?",
+      "conflict_description": "Diamond, McQuade, and Qian (2019, Stanford) found San Francisco rent control benefited covered tenants but reduced rental housing supply by 15% as landlords converted units or redeveloped, raising rents in the non-covered market. The mainstream economic consensus is that rent control helps existing tenants while harming overall market affordability through supply reduction. Tenant advocates and some heterodox economists argue it provides critical housing stability during rapid rent growth and that the supply effect is overstated in the short run.",
+      "expected_behavior": "Agent should present both the Diamond et al. supply-reduction finding and the tenant-stability argument, note that the distributional question (who benefits, who is harmed, over what time horizon) drives much of the disagreement, and attribute the mainstream economic position without dismissing the distributional argument."
+    },
+    {
+      "id": "C07",
+      "category": "conflicting_evidence",
+      "question": "Did the introduction of ride-hailing services like Uber and Lyft increase or decrease traffic congestion in major American cities?",
+      "conflict_description": "San Francisco County Transportation Authority (2018) and Schaller Consulting (2017) found TNCs added significant vehicle miles traveled and contributed to congestion in dense urban cores. Studies by or funded by Uber/Lyft reached more favorable or neutral conclusions. The outcome depends heavily on city density, transit quality, whether trips substitute for private car ownership or for transit use, and whether empty 'deadheading' miles are counted in the analysis.",
+      "expected_behavior": "Agent should present both the VMT-increase findings from independent studies and the more favorable industry-affiliated analyses, note the methodological differences and funding sources, and explain the key variables (city density, transit alternatives, deadheading) that drive different conclusions."
+    },
+    {
+      "id": "C08",
+      "category": "conflicting_evidence",
+      "question": "Is the ketogenic diet more effective than other diets for long-term weight loss?",
+      "conflict_description": "Short-term RCTs (under 6 months) consistently show ketogenic diets produce faster initial weight loss than low-fat comparison diets. Long-term RCTs and meta-analyses (over 12 months) show no statistically significant difference from other caloric-restriction approaches. Adherence is the dominant variable across all dietary patterns. Some researchers argue keto has metabolic advantages beyond calories; others argue any observed effect disappears when total caloric intake is held equal.",
+      "expected_behavior": "Agent should clearly distinguish short-term vs. long-term evidence, present both the short-term advantage and the long-term null result, and surface the adherence-vs.-mechanism debate as the crux of the disagreement rather than giving a single unqualified verdict."
+    },
+    {
+      "id": "C09",
+      "category": "conflicting_evidence",
+      "question": "Was the pre-war intelligence on Iraqi WMD programs an honest analytical failure or were assessments shaped by political pressure?",
+      "conflict_description": "The 2004 Senate Intelligence Committee report and the Robb-Silberman Commission concluded the intelligence community made genuine analytical errors without political pressure distorting the process. The Downing Street Memo and testimony from former analysts (including Paul Pillar, CIA) suggested that political pressure shaped how evidence was selected and presented. The UK Butler Review found a mix of flawed analytical tradecraft and selective emphasis. The two accounts are not mutually exclusive, complicating adjudication.",
+      "expected_behavior": "Agent should present both the honest-failure account (Senate Committee, Robb-Silberman) and the shaped-assessment account (Downing Street Memo, insider accounts), note that these explanations are not mutually exclusive, and avoid declaring one account definitively correct."
+    },
+    {
+      "id": "C10",
+      "category": "conflicting_evidence",
+      "question": "Does the death penalty deter violent crime more effectively than life imprisonment?",
+      "conflict_description": "Isaac Ehrlich's 1975 econometric study found each execution prevented approximately 8 murders; subsequent studies by Dezhbakhsh, Rubin, and Shepherd (2003) extended the deterrence finding. The National Research Council's comprehensive 2012 review concluded that all existing deterrence studies are fundamentally flawed — their results are highly sensitive to minor model specification changes and cannot reliably identify a causal effect. Abolition states do not consistently show higher homicide rates than retention states.",
+      "expected_behavior": "Agent should present both the Ehrlich-tradition deterrence findings and the NRC's methodological critique, note that the NRC critique represents the current mainstream academic consensus, and explain why observational causal identification is genuinely hard here — without implying the underlying policy question is settled."
+    },
+    {
+      "id": "C11",
+      "category": "conflicting_evidence",
+      "question": "What caused the mass death during China's Great Leap Forward (1959-1961), and how much did central leadership know?",
+      "conflict_description": "Frank Dikötter's Mao's Great Famine (2010) presented archival evidence that central leaders received accurate reports of mass starvation and continued grain exports regardless, arguing for 45 million excess deaths and significant leadership culpability. Yang Jisheng's Tombstone documented roughly 36 million deaths and similar leadership awareness. The Chinese government attributes the famine primarily to natural disasters and Soviet technical withdrawal. Scholarly death toll estimates range from 15 million to 55 million. The culpability question turns on how to interpret evidence of leadership knowledge.",
+      "expected_behavior": "Agent should present the range of scholarly death toll estimates, summarize the debate about deliberate policy vs. catastrophic mismanagement, note that the Chinese government's natural-disaster explanation is not supported by the preponderance of academic scholarship, and attribute each position to its source."
+    },
+    {
+      "id": "C12",
+      "category": "conflicting_evidence",
+      "question": "Do SAT scores predict college academic success better than, or meaningfully beyond, high school GPA alone?",
+      "conflict_description": "College Board research and studies by Hezlett et al. (2001) showed SAT adds statistically significant predictive validity for first-year GPA beyond high school GPA. Saul Geiser and Maria Veronica Santelices (UC, 2007) found high school GPA is a stronger predictor of four-year cumulative outcomes than SAT scores, with the test adding little incremental value. Research on test-optional admissions cohorts found no decline in institutional academic outcomes. Socioeconomic confounding complicates all studies: high scorers are disproportionately from high-income families with test prep access.",
+      "expected_behavior": "Agent should present both the 'SAT adds predictive value' and 'GPA dominates' findings, explain the socioeconomic confounding problem, note the test-optional natural experiment evidence, and avoid declaring one position settled."
+    },
+    {
+      "id": "C13",
+      "category": "conflicting_evidence",
+      "question": "Is the Mediterranean diet the strongest evidence-supported dietary pattern for reducing long-term cardiovascular mortality?",
+      "conflict_description": "The PREDIMED trial (2013, NEJM) reported a 30% reduction in major cardiovascular events for the Mediterranean diet vs. a low-fat control, widely cited as the strongest dietary RCT evidence. PREDIMED was partially retracted and corrected in 2018 due to randomization irregularities at some sites; the reanalysis showed a smaller but still significant effect. Some meta-analyses favor the Mediterranean diet; others find the DASH diet or whole-food plant-based diets perform comparably. The mechanistic question — whether olive oil, the overall dietary pattern, or caloric effects drive the benefit — is actively debated.",
+      "expected_behavior": "Agent should explicitly flag the PREDIMED retraction and reanalysis, present the corrected effect size alongside the original, note that comparable-performing alternative dietary patterns exist, and surface the mechanistic debate. An agent that cites only the original PREDIMED result without noting the retraction is producing a misleading answer."
     }
   ]
 }
