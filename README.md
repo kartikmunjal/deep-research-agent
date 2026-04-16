@@ -278,3 +278,4 @@ Other known limitations:
 - Measure verifier false-positive rate empirically by constructing a reference set of correctly paraphrased claims.
 - Expand adversarial and cross-domain task coverage.
 - Add CI for smoke evals and regression checks against frozen fixtures.
+- The claim-level verification step is the agent analog of a Process Reward Model — scoring individual claims rather than the final answer, for the same reason that step-level reward signals in the RLHF setting catch errors that outcome-level signals miss (see [Extension 3: PRM vs ORM](https://github.com/kartikmunjal/rlhf-and-reward-modelling-alt#extension-3-process-reward-model-prm-vs-outcome-reward-model-orm)).
