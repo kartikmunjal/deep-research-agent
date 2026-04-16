@@ -16,6 +16,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from anthropic import Anthropic
 
+from .models import QueryCost
+
 
 DECOMPOSE_PROMPT = """You are a research planning assistant. Your job is to break a complex research question into focused sub-questions that together constitute a complete answer.
 
@@ -46,7 +48,7 @@ class ResearchPlanner:
         self.client = client
         self.model = model
 
-    def decompose(self, question: str) -> tuple[list[str], str]:
+    def decompose(self, question: str, cost: QueryCost | None = None) -> tuple[list[str], str]:
         """Return 3-5 focused sub-questions and brief planning rationale."""
         response = self.client.messages.create(
             model=self.model,
@@ -55,6 +57,8 @@ class ResearchPlanner:
                 {"role": "user", "content": DECOMPOSE_PROMPT.format(question=question)}
             ],
         )
+        if cost is not None:
+            cost.add_response(response.usage)
 
         raw = response.content[0].text.strip()
 

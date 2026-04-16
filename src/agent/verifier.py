@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from anthropic import Anthropic
 
-from .models import Evidence, Claim
+from .models import Evidence, Claim, QueryCost
 
 
 VERIFY_PROMPT = """You are a fact-checker verifying claims against source evidence.
@@ -75,11 +75,12 @@ class ResearchVerifier:
         answer_text: str,
         evidence: list[Evidence],
         sources: list[dict],
+        cost: QueryCost | None = None,
     ) -> tuple[list[Claim], list[str]]:
         """Return claim-level verification judgments and unverified claim texts."""
         _ = sources  # Included for interface stability and future citation-level checks.
 
-        claims_raw = self._extract_claims(answer_text)
+        claims_raw = self._extract_claims(answer_text, cost)
         if not claims_raw:
             return [], []
 
@@ -104,6 +105,8 @@ class ResearchVerifier:
                 }
             ],
         )
+        if cost is not None:
+            cost.add_response(response.usage)
 
         raw = response.content[0].text.strip()
         raw = re.sub(r"^```(?:json)?\s*", "", raw)
@@ -131,7 +134,7 @@ class ResearchVerifier:
 
         return claims, unverified_texts
 
-    def _extract_claims(self, answer_text: str) -> list[str]:
+    def _extract_claims(self, answer_text: str, cost: QueryCost | None = None) -> list[str]:
         """Extract atomic factual claims from an answer."""
         response = self.client.messages.create(
             model=self.model,
@@ -143,6 +146,8 @@ class ResearchVerifier:
                 }
             ],
         )
+        if cost is not None:
+            cost.add_response(response.usage)
 
         raw = response.content[0].text.strip()
         raw = re.sub(r"^```(?:json)?\s*", "", raw)

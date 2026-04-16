@@ -484,6 +484,90 @@
       "question": "Is the Mediterranean diet the strongest evidence-supported dietary pattern for reducing long-term cardiovascular mortality?",
       "conflict_description": "The PREDIMED trial (2013, NEJM) reported a 30% reduction in major cardiovascular events for the Mediterranean diet vs. a low-fat control, widely cited as the strongest dietary RCT evidence. PREDIMED was partially retracted and corrected in 2018 due to randomization irregularities at some sites; the reanalysis showed a smaller but still significant effect. Some meta-analyses favor the Mediterranean diet; others find the DASH diet or whole-food plant-based diets perform comparably. The mechanistic question — whether olive oil, the overall dietary pattern, or caloric effects drive the benefit — is actively debated.",
       "expected_behavior": "Agent should explicitly flag the PREDIMED retraction and reanalysis, present the corrected effect size alongside the original, note that comparable-performing alternative dietary patterns exist, and surface the mechanistic debate. An agent that cites only the original PREDIMED result without noting the retraction is producing a misleading answer."
+    },
+    {
+      "id": "G01",
+      "category": "gaia_l1",
+      "question": "What is the boiling point of water in degrees Celsius at standard atmospheric pressure?",
+      "expected_answer": "100",
+      "key_facts": ["100 degrees Celsius", "standard atmospheric pressure", "1 atm"]
+    },
+    {
+      "id": "G02",
+      "category": "gaia_l1",
+      "question": "In what year did the Berlin Wall fall?",
+      "expected_answer": "1989",
+      "key_facts": ["1989", "November 9"]
+    },
+    {
+      "id": "G03",
+      "category": "gaia_l1",
+      "question": "What is the chemical formula for table salt?",
+      "expected_answer": "NaCl",
+      "key_facts": ["NaCl", "sodium chloride", "sodium and chlorine"]
+    },
+    {
+      "id": "G04",
+      "category": "gaia_l1",
+      "question": "Who wrote the novel '1984'?",
+      "expected_answer": "George Orwell",
+      "key_facts": ["George Orwell", "Eric Arthur Blair"]
+    },
+    {
+      "id": "G05",
+      "category": "gaia_l1",
+      "question": "What is the speed of light in a vacuum in meters per second (approximate)?",
+      "expected_answer": "299792458",
+      "key_facts": ["299,792,458", "approximately 3 × 10^8", "3 × 10^8 m/s"]
+    },
+    {
+      "id": "G06",
+      "category": "gaia_l1",
+      "question": "How many bones are in the adult human body?",
+      "expected_answer": "206",
+      "key_facts": ["206 bones", "206"]
+    },
+    {
+      "id": "G07",
+      "category": "gaia_l1",
+      "question": "What planet is known as the Red Planet?",
+      "expected_answer": "Mars",
+      "key_facts": ["Mars", "red iron oxide", "iron oxide surface"]
+    },
+    {
+      "id": "G08",
+      "category": "gaia_l1",
+      "question": "What is the name of the process by which plants convert sunlight into food?",
+      "expected_answer": "photosynthesis",
+      "key_facts": ["photosynthesis", "chlorophyll", "carbon dioxide and water", "glucose"]
+    },
+    {
+      "id": "G09",
+      "category": "gaia_l1",
+      "question": "Who painted the Mona Lisa?",
+      "expected_answer": "Leonardo da Vinci",
+      "key_facts": ["Leonardo da Vinci", "Leonardo", "da Vinci"]
+    },
+    {
+      "id": "G10",
+      "category": "gaia_l1",
+      "question": "What is the powerhouse of the cell?",
+      "expected_answer": "mitochondria",
+      "key_facts": ["mitochondria", "mitochondrion", "ATP production", "cellular respiration"]
+    },
+    {
+      "id": "G11",
+      "category": "gaia_l1",
+      "question": "In which country is the Eiffel Tower located?",
+      "expected_answer": "France",
+      "key_facts": ["France", "Paris", "French"]
+    },
+    {
+      "id": "G12",
+      "category": "gaia_l1",
+      "question": "What is the largest planet in our solar system?",
+      "expected_answer": "Jupiter",
+      "key_facts": ["Jupiter", "gas giant", "largest planet"]
     }
   ]
 }

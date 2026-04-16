@@ -17,17 +17,22 @@ Failure recovery: if a Tavily search returns no useful results, the
 searcher reformulates the query (strips filler words, tries synonyms)
 and retries once. If the retry also fails, the sub-question is marked
 as unresolved and explicitly flagged in the final answer.
+
+Async interface: search_async() parallelises sub-question retrieval via
+asyncio.gather in the pipeline. The sync search() method remains for
+single-question use and testing.
 """
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from anthropic import Anthropic
-    from tavily import TavilyClient
+    from anthropic import Anthropic, AsyncAnthropic
+    from tavily import TavilyClient, AsyncTavilyClient
 
-from .models import Evidence
+from .models import Evidence, QueryCost
 
 
 EXTRACT_PROMPT = """You are extracting relevant evidence from a web article.
@@ -62,28 +67,34 @@ class ResearchSearcher:
         model: str,
         results_per_query: int = 4,
         max_content_chars: int = 3000,
+        async_anthropic_client: AsyncAnthropic | None = None,
+        async_tavily_client: AsyncTavilyClient | None = None,
     ):
         self.anthropic = anthropic_client
         self.tavily = tavily_client
         self.model = model
         self.results_per_query = results_per_query
         self.max_content_chars = max_content_chars
+        self._async_anthropic = async_anthropic_client
+        self._async_tavily = async_tavily_client
 
-    def search(self, sub_question: str) -> tuple[list[Evidence], int]:
-        """Search and extract evidence for one sub-question."""
+    # ------------------------------------------------------------------
+    # Sync interface (single sub-question, blocking)
+    # ------------------------------------------------------------------
+
+    def search(self, sub_question: str, cost: QueryCost | None = None) -> tuple[list[Evidence], int]:
+        """Search and extract evidence for one sub-question (blocking)."""
         tool_calls = 0
-        evidence, calls = self._search_and_extract(sub_question, sub_question)
+        evidence, calls = self._search_and_extract(sub_question, sub_question, cost)
         tool_calls += calls
 
         if not evidence:
-            # Reformulate and retry once.
-            reformulated = self._reformulate(sub_question)
+            reformulated = self._reformulate(sub_question, cost)
             tool_calls += 1
-            evidence, calls = self._search_and_extract(sub_question, reformulated)
+            evidence, calls = self._search_and_extract(sub_question, reformulated, cost)
             tool_calls += calls
 
         if not evidence:
-            # Mark as unresolved — pipeline will surface this in the final answer.
             evidence = [
                 Evidence(
                     url="",
@@ -97,11 +108,9 @@ class ResearchSearcher:
         return evidence, tool_calls
 
     def _search_and_extract(
-        self, sub_question: str, query: str
+        self, sub_question: str, query: str, cost: QueryCost | None
     ) -> tuple[list[Evidence], int]:
-        """Run web search and LLM extraction over results."""
         tool_calls = 0
-
         try:
             results = self.tavily.search(
                 query=query,
@@ -110,6 +119,8 @@ class ResearchSearcher:
                 include_raw_content=True,
             )
             tool_calls += 1
+            if cost is not None:
+                cost.add_tavily()
         except Exception:
             return [], tool_calls
 
@@ -118,15 +129,9 @@ class ResearchSearcher:
             content = (r.get("raw_content") or r.get("content") or "").strip()
             if not content:
                 continue
-
             content = content[: self.max_content_chars]
-            extracted = self._extract_relevant(
-                sub_question=sub_question,
-                title=r.get("title", ""),
-                content=content,
-            )
+            extracted = self._extract_relevant(sub_question, r.get("title", ""), content, cost)
             tool_calls += 1
-
             if extracted and extracted != "NO_RELEVANT_CONTENT":
                 evidence.append(
                     Evidence(
@@ -140,8 +145,9 @@ class ResearchSearcher:
 
         return evidence, tool_calls
 
-    def _extract_relevant(self, sub_question: str, title: str, content: str) -> str:
-        """Extract only sentences that inform the sub-question."""
+    def _extract_relevant(
+        self, sub_question: str, title: str, content: str, cost: QueryCost | None
+    ) -> str:
         response = self.anthropic.messages.create(
             model=self.model,
             max_tokens=400,
@@ -149,25 +155,157 @@ class ResearchSearcher:
                 {
                     "role": "user",
                     "content": EXTRACT_PROMPT.format(
-                        sub_question=sub_question,
-                        title=title,
-                        content=content,
+                        sub_question=sub_question, title=title, content=content
                     ),
                 }
             ],
         )
+        if cost is not None:
+            cost.add_response(response.usage)
         return response.content[0].text.strip()
 
-    def _reformulate(self, query: str) -> str:
-        """Ask the model to rewrite a failed query once."""
+    def _reformulate(self, query: str, cost: QueryCost | None) -> str:
         response = self.anthropic.messages.create(
             model=self.model,
             max_tokens=128,
-            messages=[
-                {
-                    "role": "user",
-                    "content": REFORMULATE_PROMPT.format(query=query),
-                }
-            ],
+            messages=[{"role": "user", "content": REFORMULATE_PROMPT.format(query=query)}],
         )
+        if cost is not None:
+            cost.add_response(response.usage)
+        return response.content[0].text.strip()
+
+    # ------------------------------------------------------------------
+    # Async interface (single sub-question, non-blocking)
+    # Called via asyncio.gather in the pipeline for parallel retrieval.
+    # ------------------------------------------------------------------
+
+    async def search_async(
+        self, sub_question: str, cost: QueryCost | None = None
+    ) -> tuple[list[Evidence], int]:
+        """Non-blocking search for one sub-question. Use asyncio.gather for parallelism."""
+        tool_calls = 0
+        evidence, calls = await self._search_and_extract_async(sub_question, sub_question, cost)
+        tool_calls += calls
+
+        if not evidence:
+            reformulated = await self._reformulate_async(sub_question, cost)
+            tool_calls += 1
+            evidence, calls = await self._search_and_extract_async(sub_question, reformulated, cost)
+            tool_calls += calls
+
+        if not evidence:
+            evidence = [
+                Evidence(
+                    url="",
+                    title="",
+                    extracted_text="",
+                    sub_question=sub_question,
+                    search_successful=False,
+                )
+            ]
+
+        return evidence, tool_calls
+
+    async def _search_and_extract_async(
+        self, sub_question: str, query: str, cost: QueryCost | None
+    ) -> tuple[list[Evidence], int]:
+        tool_calls = 0
+        try:
+            if self._async_tavily is not None:
+                results = await self._async_tavily.search(
+                    query=query,
+                    max_results=self.results_per_query,
+                    search_depth="advanced",
+                    include_raw_content=True,
+                )
+            else:
+                # Fall back to running sync client in a thread
+                results = await asyncio.to_thread(
+                    self.tavily.search,
+                    query=query,
+                    max_results=self.results_per_query,
+                    search_depth="advanced",
+                    include_raw_content=True,
+                )
+            tool_calls += 1
+            if cost is not None:
+                cost.add_tavily()
+        except Exception:
+            return [], tool_calls
+
+        tasks = []
+        raw_results = results.get("results", [])
+        for r in raw_results:
+            content = (r.get("raw_content") or r.get("content") or "").strip()
+            if not content:
+                continue
+            content = content[: self.max_content_chars]
+            tasks.append(
+                self._extract_relevant_async(sub_question, r.get("title", ""), content, cost, r)
+            )
+
+        extracted_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        evidence = []
+        for item in extracted_results:
+            if isinstance(item, Exception):
+                continue
+            tool_calls += 1
+            ev, r = item
+            if ev and ev != "NO_RELEVANT_CONTENT":
+                evidence.append(
+                    Evidence(
+                        url=r.get("url", ""),
+                        title=r.get("title", ""),
+                        extracted_text=ev,
+                        sub_question=sub_question,
+                        search_successful=True,
+                    )
+                )
+
+        return evidence, tool_calls
+
+    async def _extract_relevant_async(
+        self,
+        sub_question: str,
+        title: str,
+        content: str,
+        cost: QueryCost | None,
+        raw_result: dict,
+    ) -> tuple[str, dict]:
+        prompt = EXTRACT_PROMPT.format(sub_question=sub_question, title=title, content=content)
+        if self._async_anthropic is not None:
+            response = await self._async_anthropic.messages.create(
+                model=self.model,
+                max_tokens=400,
+                messages=[{"role": "user", "content": prompt}],
+            )
+        else:
+            response = await asyncio.to_thread(
+                self.anthropic.messages.create,
+                model=self.model,
+                max_tokens=400,
+                messages=[{"role": "user", "content": prompt}],
+            )
+        if cost is not None:
+            cost.add_response(response.usage)
+        return response.content[0].text.strip(), raw_result
+
+    async def _reformulate_async(self, query: str, cost: QueryCost | None) -> str:
+        prompt = REFORMULATE_PROMPT.format(query=query)
+        if self._async_anthropic is not None:
+            response = await self._async_anthropic.messages.create(
+                model=self.model,
+                max_tokens=128,
+                messages=[{"role": "user", "content": prompt}],
+            )
+        else:
+            response = await asyncio.to_thread(
+                self.anthropic.messages.create,
+                model=self.model,
+                max_tokens=128,
+                messages=[{"role": "user", "content": prompt}],
+            )
+        if cost is not None:
+            cost.add_response(response.usage)
         return response.content[0].text.strip()

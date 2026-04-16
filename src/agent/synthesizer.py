@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from anthropic import Anthropic
 
-from .models import Evidence
+from .models import Evidence, QueryCost
 
 
 SYNTHESIZE_PROMPT = """You are a research analyst writing a comprehensive, cited answer.
@@ -61,6 +61,7 @@ class ResearchSynthesizer:
         question: str,
         sub_questions: list[str],
         evidence: list[Evidence],
+        cost: QueryCost | None = None,
     ) -> tuple[str, list[str], list[dict[str, object]]]:
         """Return answer text, unanswered sub-questions, and source metadata."""
         good_evidence = [e for e in evidence if e.search_successful and e.extracted_text]
@@ -105,6 +106,9 @@ class ResearchSynthesizer:
                 }
             ],
         )
+
+        if cost is not None:
+            cost.add_response(response.usage)
 
         raw = response.content[0].text.strip()
         raw = re.sub(r"^```(?:json)?\s*", "", raw)

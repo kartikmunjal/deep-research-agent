@@ -7,6 +7,7 @@ Computes metrics per result by category:
     citation_accuracy   — fraction of claims the verifier traced to evidence
     completeness        — fraction of sub-questions addressed in the answer
     hallucination_rate  — fraction of claims the verifier could NOT trace to evidence
+    key_fact_recall     — fraction of expected key_facts present in the answer text
 
   unanswerable tasks (additional):
     uncertainty_reported — whether the agent explicitly flagged it could not find
@@ -16,10 +17,20 @@ Computes metrics per result by category:
     conflict_acknowledged — whether the agent surfaced the evidential conflict
                             rather than collapsing to a single position
 
+  gaia_l1 tasks (additional):
+    gaia_accuracy — whether the answer contains the expected answer string (fuzzy match)
+
+  Failure taxonomy (all tasks, plan_verify config):
+    failure_mode — one of: none, retrieval_failure, coverage_gap,
+                   partial_hallucination, genuine_hallucination
+
 For unanswerable tasks, hallucination_rate + uncertainty_reported are primary.
 For conflicting_evidence tasks, conflict_acknowledged is primary: an agent that
 picks one side and presents it as settled consensus is failing the task even if
 its claims are individually grounded.
+For gaia_l1 tasks, gaia_accuracy is the primary signal; it measures whether the
+agent can answer straightforward factual questions that any good retrieval agent
+should handle correctly.
 """
 
 import sys
@@ -97,9 +108,11 @@ def score_result(answer: ResearchAnswer, task: dict) -> dict:
     Compute all metrics for a single research result.
 
     Returns a dict with keys:
-        citation_accuracy, completeness, hallucination_rate, tool_calls
+        citation_accuracy, completeness, hallucination_rate, tool_calls,
+        key_fact_recall, failure_mode
         + uncertainty_reported  (unanswerable category only)
         + conflict_acknowledged (conflicting_evidence category only)
+        + gaia_accuracy         (gaia_l1 category only)
     """
     category = task["category"]
 
@@ -108,7 +121,12 @@ def score_result(answer: ResearchAnswer, task: dict) -> dict:
         "completeness": round(answer.completeness, 3),
         "hallucination_rate": round(answer.hallucination_rate, 3),
         "tool_calls": answer.tool_calls,
+        "key_fact_recall": _key_fact_recall(answer, task),
+        "failure_mode": categorize_failure(answer, task),
     }
+
+    if answer.cost is not None:
+        scores["cost_usd"] = round(answer.cost.estimate_usd, 4)
 
     if category == "unanswerable":
         scores["uncertainty_reported"] = _check_uncertainty_reported(answer)
@@ -116,7 +134,71 @@ def score_result(answer: ResearchAnswer, task: dict) -> dict:
     if category == "conflicting_evidence":
         scores["conflict_acknowledged"] = _check_conflict_acknowledged(answer)
 
+    if category == "gaia_l1":
+        scores["gaia_accuracy"] = _check_gaia_accuracy(answer, task)
+
     return scores
+
+
+def _key_fact_recall(answer: ResearchAnswer, task: dict) -> float:
+    """Fraction of expected key_facts present in the answer text (case-insensitive substring)."""
+    key_facts = task.get("key_facts", [])
+    if not key_facts:
+        return 1.0
+    text_lower = answer.answer_text.lower()
+    found = sum(1 for kf in key_facts if kf.lower() in text_lower)
+    return round(found / len(key_facts), 3)
+
+
+def _check_gaia_accuracy(answer: ResearchAnswer, task: dict) -> bool:
+    """True if the expected answer appears (case-insensitive) anywhere in the answer text."""
+    expected = task.get("expected_answer", "")
+    if not expected:
+        return False
+    return expected.lower() in answer.answer_text.lower()
+
+
+def categorize_failure(answer: ResearchAnswer, task: dict) -> str:
+    """
+    Classify the primary failure mode for a result.
+
+    Categories (mutually exclusive, most-severe-first priority):
+      retrieval_failure   — no evidence was retrieved (all searches failed)
+      coverage_gap        — some sub-questions had no evidence (partial retrieval)
+      genuine_hallucination — hallucination_rate > 0.3 with reasonable completeness
+      partial_hallucination — hallucination_rate > 0 but <= 0.3
+      none                — no notable failure detected
+
+    For unanswerable tasks, a low hallucination_rate is expected and is NOT a failure.
+    """
+    category = task.get("category", "")
+    hall_rate = answer.hallucination_rate
+    completeness = answer.completeness
+
+    # Check for total retrieval failure
+    all_failed = (
+        len(answer.unverified_claims) == 0 and
+        len(answer.claims) == 0 and
+        completeness < 0.2
+    )
+    if all_failed:
+        return "retrieval_failure"
+
+    # Coverage gap: meaningful unanswered sub-questions
+    if completeness < 0.6 and len(answer.unanswered_sub_questions) > 0:
+        return "coverage_gap"
+
+    # Skip hallucination categorisation for unanswerable tasks
+    if category == "unanswerable":
+        return "none"
+
+    if hall_rate > 0.3:
+        return "genuine_hallucination"
+
+    if hall_rate > 0.0:
+        return "partial_hallucination"
+
+    return "none"
 
 
 def _check_uncertainty_reported(answer: ResearchAnswer) -> bool:
@@ -164,7 +246,8 @@ def aggregate_results(results: list[dict]) -> dict:
     Aggregate scores across multiple results for reporting.
 
     Returns dict with mean metrics per config and per category, plus
-    behavioral summary rates for unanswerable and conflicting_evidence tasks.
+    behavioral summary rates for unanswerable and conflicting_evidence tasks,
+    GAIA accuracy, and failure mode taxonomy distribution.
     """
     from collections import defaultdict
     import statistics
@@ -178,7 +261,8 @@ def aggregate_results(results: list[dict]) -> dict:
         by_config[r["config"]].append(r["scores"])
         by_category[r["category"]].append(r["scores"])
 
-    _boolean_keys = {"uncertainty_reported", "conflict_acknowledged"}
+    _boolean_keys = {"uncertainty_reported", "conflict_acknowledged", "gaia_accuracy"}
+    _skip_mean_keys = {"failure_mode"}
 
     def mean_scores(score_list: list[dict]) -> dict:
         if not score_list:
@@ -188,6 +272,8 @@ def aggregate_results(results: list[dict]) -> dict:
             all_keys.update(s.keys())
         result = {}
         for k in all_keys:
+            if k in _skip_mean_keys:
+                continue
             vals = [s[k] for s in score_list if k in s]
             if not vals:
                 continue
@@ -202,6 +288,8 @@ def aggregate_results(results: list[dict]) -> dict:
         "by_category": {k: mean_scores(v) for k, v in by_category.items()},
         "unanswerable_uncertainty_rate": _unanswerable_uncertainty_rate(results),
         "conflicting_evidence_acknowledged_rate": _conflict_acknowledged_rate(results),
+        "gaia_l1_accuracy": _gaia_accuracy_rate(results),
+        "failure_taxonomy": _failure_taxonomy(results),
     }
 
 
@@ -225,3 +313,47 @@ def _conflict_acknowledged_rate(results: list[dict]) -> float:
         return 0.0
     acknowledged = sum(1 for r in rows if r["scores"].get("conflict_acknowledged", False))
     return round(acknowledged / len(rows), 3)
+
+
+def _gaia_accuracy_rate(results: list[dict]) -> float:
+    """Fraction of GAIA L1 tasks where the expected answer was found in the response."""
+    rows = [
+        r for r in results
+        if r.get("category") == "gaia_l1" and r.get("scores")
+    ]
+    if not rows:
+        return 0.0
+    correct = sum(1 for r in rows if r["scores"].get("gaia_accuracy", False))
+    return round(correct / len(rows), 3)
+
+
+def _failure_taxonomy(results: list[dict]) -> dict:
+    """
+    Count failure mode occurrences across all tasks (plan_verify config only,
+    since other configs have structural gaps that aren't true failure modes).
+
+    Returns dict mapping failure_mode -> count and rate.
+    """
+    from collections import Counter
+
+    plan_verify_results = [
+        r for r in results
+        if r.get("config") == "plan_verify" and r.get("scores")
+    ]
+    if not plan_verify_results:
+        # Fall back to all results if plan_verify not present
+        plan_verify_results = [r for r in results if r.get("scores")]
+
+    counts: Counter = Counter()
+    for r in plan_verify_results:
+        mode = r["scores"].get("failure_mode", "none")
+        counts[mode] += 1
+
+    total = len(plan_verify_results)
+    taxonomy = {}
+    for mode, count in sorted(counts.items()):
+        taxonomy[mode] = {
+            "count": count,
+            "rate": round(count / total, 3) if total else 0.0,
+        }
+    return taxonomy

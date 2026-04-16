@@ -20,6 +20,41 @@ class Claim:
 
 
 @dataclass
+class QueryCost:
+    """Tracks token usage and API requests for one pipeline run.
+
+    Pricing constants reflect claude-sonnet-4-6 public rates and
+    Tavily Advanced search pricing as of 2026. Update if rates change.
+    """
+    input_tokens: int = 0
+    output_tokens: int = 0
+    tavily_requests: int = 0
+
+    # claude-sonnet-4-6: $3.00/M input, $15.00/M output
+    _CLAUDE_INPUT_COST_PER_M: float = field(default=3.00, init=False, repr=False)
+    _CLAUDE_OUTPUT_COST_PER_M: float = field(default=15.00, init=False, repr=False)
+    # Tavily Advanced: ~$0.004/request
+    _TAVILY_COST_PER_REQUEST: float = field(default=0.004, init=False, repr=False)
+
+    def add_response(self, usage: object) -> None:
+        """Accumulate token counts from an Anthropic response.usage object."""
+        self.input_tokens += getattr(usage, "input_tokens", 0)
+        self.output_tokens += getattr(usage, "output_tokens", 0)
+
+    def add_tavily(self, n: int = 1) -> None:
+        self.tavily_requests += n
+
+    @property
+    def estimate_usd(self) -> float:
+        claude = (
+            (self.input_tokens / 1_000_000) * self._CLAUDE_INPUT_COST_PER_M
+            + (self.output_tokens / 1_000_000) * self._CLAUDE_OUTPUT_COST_PER_M
+        )
+        tavily = self.tavily_requests * self._TAVILY_COST_PER_REQUEST
+        return round(claude + tavily, 4)
+
+
+@dataclass
 class ResearchAnswer:
     question: str
     sub_questions: list[str]
@@ -30,6 +65,7 @@ class ResearchAnswer:
     unverified_claims: list[str]
     unanswered_sub_questions: list[str]
     tool_calls: int = 0
+    cost: Optional[QueryCost] = None
 
     @property
     def hallucination_rate(self) -> float:
