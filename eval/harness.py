@@ -12,7 +12,8 @@ Results are written to eval/results/{run_id}.json for offline analysis.
 
 Usage:
     python -m eval.harness                             # full eval, all tasks (uses APIs)
-    python -m eval.harness --offline                   # zero-cost synthetic run
+    python -m eval.harness --offline                   # zero-cost replay benchmark
+    python -m eval.harness --synthetic-smoke          # legacy deterministic smoke run
     python -m eval.harness --category factual          # one category only
     python -m eval.harness --task-ids F01 M03          # specific tasks
     python -m eval.harness --configs plan_verify --dry-run  # print tasks only
@@ -33,6 +34,8 @@ from pathlib import Path
 # Allow running as a script from repo root
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from eval.benchmark_profiles import get_profile
+from eval.replay import load_replay_benchmark, replay_results
 from eval.scoring import score_result
 
 
@@ -71,8 +74,8 @@ def _jitter(task_id: str, config_name: str, scale: float = 0.03) -> float:
     return centered * scale
 
 
-def _offline_scores(task: dict, config_name: str) -> tuple[dict, int]:
-    """Produce deterministic synthetic metrics for zero-cost smoke runs."""
+def _synthetic_smoke_scores(task: dict, config_name: str) -> tuple[dict, int]:
+    """Produce deterministic synthetic metrics for zero-cost smoke validation."""
     base = {
         "no_plan_no_verify": {
             "citation_accuracy": 0.60,
@@ -176,6 +179,18 @@ def _offline_scores(task: dict, config_name: str) -> tuple[dict, int]:
     return scores, int(base["tool_calls"])
 
 
+def _attach_posthoc_claim_scoring(answer, pipeline, skip_verification: bool) -> bool:
+    """Populate claim judgments for scoring even when pipeline verification was skipped."""
+    if not skip_verification:
+        return False
+    if answer.claims:
+        return False
+    claims, unverified = pipeline.verifier.verify(answer.answer_text, answer.evidence, answer.sources)
+    answer.claims = claims
+    answer.unverified_claims = unverified
+    return True
+
+
 def load_tasks(
     category: str | None = None,
     task_ids: list[str] | None = None,
@@ -198,12 +213,23 @@ def run_eval(
     configs: list[str] | None = None,
     category: str | None = None,
     task_ids: list[str] | None = None,
+    profile: str | None = None,
     dry_run: bool = False,
     verbose: bool = False,
     model: str = "claude-sonnet-4-6",
     offline: bool = False,
+    replay_benchmark: str | None = None,
+    synthetic_smoke: bool = False,
 ) -> dict:
     configs = configs or list(CONFIGS.keys())
+    selection_note: str | None = None
+    if profile:
+        if category or task_ids:
+            raise ValueError("Use profile or category/task_ids filters, not both")
+        resolved_profile = get_profile(profile)
+        task_ids = list(resolved_profile.task_ids)
+        selection_note = resolved_profile.description
+
     tasks = load_tasks(category, task_ids)
 
     if not tasks:
@@ -217,8 +243,31 @@ def run_eval(
             print(f"  [{t['id']}] {t['category']}: {t['question'][:70]}...")
         return {}
 
+    if offline and synthetic_smoke:
+        raise ValueError("Use either offline replay or synthetic_smoke, not both")
+
+    if offline:
+        benchmark = load_replay_benchmark(replay_benchmark)
+        all_results = replay_results(
+            benchmark,
+            tasks=tasks,
+            configs=configs,
+            task_ids=[task["id"] for task in tasks],
+        )
+        RESULTS_DIR.mkdir(exist_ok=True)
+        out_path = RESULTS_DIR / f"{all_results['run_id']}.json"
+        with open(out_path, "w") as f:
+            json.dump(all_results, f, indent=2)
+        print(
+            "[offline] Replaying frozen benchmark artifact. "
+            "No external API calls will be made."
+        )
+        print(f"\nResults written to {out_path}")
+        _print_summary(all_results)
+        return all_results
+
     pipeline = None
-    if not offline:
+    if not synthetic_smoke:
         from src.agent.pipeline import ResearchPipeline
 
         pipeline = ResearchPipeline(model=model)
@@ -229,13 +278,16 @@ def run_eval(
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "git_commit": _get_git_commit(),
         "model": model,
-        "result_mode": "offline_fixture" if offline else "live_api",
+        "result_mode": "offline_fixture" if synthetic_smoke else "live_api",
+        "benchmark_claims_allowed": not synthetic_smoke,
+        "task_profile": profile,
+        "task_selection_note": selection_note,
         "configs": configs,
         "results": [],
     }
 
-    if offline:
-        print("[offline] Running deterministic synthetic eval. No external API calls will be made.")
+    if synthetic_smoke:
+        print("[synthetic] Running deterministic smoke eval. No external API calls will be made.")
 
     for task in tasks:
         for config_name in configs:
@@ -249,8 +301,8 @@ def run_eval(
                 "config": config_name,
             }
 
-            if offline:
-                scores, tool_calls = _offline_scores(task, config_name)
+            if synthetic_smoke:
+                scores, tool_calls = _synthetic_smoke_scores(task, config_name)
                 entry.update(
                     {
                         "elapsed_seconds": 0.0,
@@ -259,8 +311,13 @@ def run_eval(
                         "num_sub_questions": 0,
                         "sub_questions": [],
                         "answer_text": "OFFLINE_SYNTHETIC_RESULT: no model call executed.",
+                        "evidence": [],
+                        "claims": [],
+                        "stage_timings": {},
+                        "sub_question_timings": [],
                         "sources": [],
                         "num_claims": 0,
+                        "posthoc_verifier_for_scoring": False,
                         "unverified_claims": [],
                         "unanswered_sub_questions": [],
                         "scores": scores,
@@ -269,7 +326,7 @@ def run_eval(
                     }
                 )
                 print(
-                    f"  offline fixture | hallucination_rate={scores['hallucination_rate']:.2f} | "
+                    f"  synthetic smoke | hallucination_rate={scores['hallucination_rate']:.2f} | "
                     f"completeness={scores['completeness']:.2f}"
                 )
                 all_results["results"].append(entry)
@@ -283,6 +340,11 @@ def run_eval(
                     **config_kwargs,
                 )
                 elapsed = time.time() - t0
+                posthoc_scoring = _attach_posthoc_claim_scoring(
+                    answer,
+                    pipeline,
+                    skip_verification=config_kwargs["skip_verification"],
+                )
 
                 scores = score_result(answer, task)
 
@@ -294,8 +356,13 @@ def run_eval(
                         "num_sub_questions": len(answer.sub_questions),
                         "sub_questions": answer.sub_questions,
                         "answer_text": answer.answer_text,
+                        "evidence": [ev.__dict__ for ev in answer.evidence],
+                        "claims": [claim.__dict__ for claim in answer.claims],
+                        "stage_timings": answer.stage_timings,
+                        "sub_question_timings": answer.sub_question_timings,
                         "sources": answer.sources,
                         "num_claims": len(answer.claims),
+                        "posthoc_verifier_for_scoring": posthoc_scoring,
                         "unverified_claims": answer.unverified_claims,
                         "unanswered_sub_questions": answer.unanswered_sub_questions,
                         "scores": scores,
@@ -344,17 +411,32 @@ def _print_summary(all_results: dict) -> None:
     from collections import defaultdict, Counter
     import statistics
 
+    result_mode = all_results.get("result_mode", "unknown")
+    synthetic = result_mode == "offline_fixture"
+    replay = result_mode == "replay_benchmark"
     by_config: dict[str, list[dict]] = defaultdict(list)
     for r in all_results["results"]:
         if r.get("scores"):
             by_config[r["config"]].append(r)
 
     print("\n" + "=" * 80)
-    print("EVALUATION SUMMARY")
+    if synthetic:
+        title = "EVALUATION SUMMARY (SYNTHETIC OFFLINE FIXTURE)"
+    elif replay:
+        title = "EVALUATION SUMMARY (FROZEN REPLAY BENCHMARK)"
+    else:
+        title = "EVALUATION SUMMARY"
+    print(title)
     print("=" * 80)
+    if synthetic:
+        print("WARNING: all metrics below are deterministic smoke-test outputs, not benchmark claims.")
+        print("-" * 80)
+    elif replay:
+        print("Replayed from a frozen artifact; metrics are deterministic and benchmark-claimable if the source artifact was claimable.")
+        print("-" * 80)
     header = (
         f"{'Config':<25} {'Cit.Acc':>8} {'Compl.':>8} {'Hall.%':>8} "
-        f"{'ToolCalls':>10} {'Est.Cost':>10}"
+        f"{'ToolCalls':>10} {('Synth.Cost' if synthetic else 'Est.Cost'):>10}"
     )
     print(header)
     print("-" * 80)
@@ -393,16 +475,31 @@ def _print_summary(all_results: dict) -> None:
     if unanswerable:
         rate = sum(1 for r in unanswerable
                    if r["scores"].get("uncertainty_reported", False)) / len(unanswerable)
-        print(f"\nUnanswerable uncertainty rate (plan_verify): {rate:.0%} ({len(unanswerable)} tasks)")
+        label = "Unanswerable uncertainty rate"
+        if synthetic:
+            label = "Synthetic unanswerable uncertainty rate"
+        elif replay:
+            label = "Replay benchmark unanswerable uncertainty rate"
+        print(f"\n{label} (plan_verify): {rate:.0%} ({len(unanswerable)} tasks)")
 
     if conflicting:
         rate = sum(1 for r in conflicting
                    if r["scores"].get("conflict_acknowledged", False)) / len(conflicting)
-        print(f"Conflicting evidence acknowledged rate (plan_verify): {rate:.0%} ({len(conflicting)} tasks)")
+        label = "Conflicting evidence acknowledged rate"
+        if synthetic:
+            label = "Synthetic conflicting-evidence acknowledgement rate"
+        elif replay:
+            label = "Replay benchmark conflicting-evidence acknowledgement rate"
+        print(f"{label} (plan_verify): {rate:.0%} ({len(conflicting)} tasks)")
 
     if gaia:
         rate = sum(1 for r in gaia if r["scores"].get("gaia_accuracy", False)) / len(gaia)
-        print(f"GAIA L1 accuracy (plan_verify): {rate:.0%} ({len(gaia)} tasks)")
+        label = "GAIA L1 subset accuracy"
+        if synthetic:
+            label = "Synthetic GAIA L1 subset accuracy"
+        elif replay:
+            label = "Replay benchmark GAIA L1 subset accuracy"
+        print(f"{label} (plan_verify): {rate:.0%} ({len(gaia)} tasks)")
 
     # Failure mode taxonomy (plan_verify)
     if pv_results:
@@ -410,7 +507,12 @@ def _print_summary(all_results: dict) -> None:
             r["scores"].get("failure_mode", "none") for r in pv_results
         )
         total = len(pv_results)
-        print(f"\nFailure mode taxonomy — plan_verify ({total} tasks):")
+        title = "Failure mode taxonomy"
+        if synthetic:
+            title = "Synthetic failure mode taxonomy"
+        elif replay:
+            title = "Replay benchmark failure mode taxonomy"
+        print(f"\n{title} — plan_verify ({total} tasks):")
         for mode in ["none", "partial_hallucination", "genuine_hallucination",
                      "coverage_gap", "retrieval_failure"]:
             count = failure_counts.get(mode, 0)
@@ -426,18 +528,40 @@ if __name__ == "__main__":
         choices=["factual", "multi_hop", "unanswerable", "conflicting_evidence", "gaia_l1"],
     )
     parser.add_argument("--task-ids", nargs="+")
+    parser.add_argument(
+        "--profile",
+        choices=["core_live_28", "internal_full_51", "gaia_local_12"],
+        help="Named reproducible task profile",
+    )
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--model", default="claude-sonnet-4-6")
-    parser.add_argument("--offline", action="store_true", help="Run deterministic synthetic eval; no API calls")
+    parser.add_argument(
+        "--offline",
+        action="store_true",
+        help="Replay a frozen benchmark artifact; no API calls",
+    )
+    parser.add_argument(
+        "--replay-benchmark",
+        type=str,
+        help="Path to a frozen replay benchmark JSON file",
+    )
+    parser.add_argument(
+        "--synthetic-smoke",
+        action="store_true",
+        help="Run the legacy deterministic smoke fixture mode; not benchmark-valid",
+    )
     args = parser.parse_args()
 
     run_eval(
         configs=args.configs,
         category=args.category,
         task_ids=args.task_ids,
+        profile=args.profile,
         dry_run=args.dry_run,
         verbose=args.verbose,
         model=args.model,
         offline=args.offline,
+        replay_benchmark=args.replay_benchmark,
+        synthetic_smoke=args.synthetic_smoke,
     )

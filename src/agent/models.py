@@ -66,6 +66,8 @@ class ResearchAnswer:
     unanswered_sub_questions: list[str]
     tool_calls: int = 0
     cost: Optional[QueryCost] = None
+    stage_timings: dict[str, float] = field(default_factory=dict)
+    sub_question_timings: list[dict] = field(default_factory=list)
 
     @property
     def hallucination_rate(self) -> float:

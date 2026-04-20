@@ -3,6 +3,7 @@
 Usage:
     python -m eval.summarize_results --latest
     python -m eval.summarize_results --latest --mode live_api --require-live
+    python -m eval.summarize_results --latest --mode replay_benchmark --require-benchmarkable
     python -m eval.summarize_results --file eval/results/20260411T120000Z.json
     python -m eval.summarize_results --latest --export-json eval/results/summary.json
 """
@@ -129,7 +130,7 @@ def main() -> None:
     parser.add_argument("--latest", action="store_true", help="Use latest results JSON in eval/results")
     parser.add_argument(
         "--mode",
-        choices=["any", "live_api", "offline_fixture"],
+        choices=["any", "live_api", "offline_fixture", "replay_benchmark"],
         default="any",
         help="Filter latest run selection by result_mode when using --latest",
     )
@@ -137,6 +138,11 @@ def main() -> None:
         "--require-live",
         action="store_true",
         help="Exit non-zero if the selected run is not result_mode=live_api",
+    )
+    parser.add_argument(
+        "--require-benchmarkable",
+        action="store_true",
+        help="Exit non-zero if the selected run is not benchmark-claimable",
     )
     parser.add_argument("--export-json", type=str, help="Optional path to write machine-readable summary")
     args = parser.parse_args()
@@ -159,6 +165,11 @@ def main() -> None:
         raise SystemExit(
             f"Selected run is result_mode={mode}. Re-run with --mode live_api after a paid benchmark run."
         )
+    if args.require_benchmarkable and not run.get("benchmark_claims_allowed", mode == "live_api"):
+        raise SystemExit(
+            "Selected run is not benchmark-claimable. "
+            "Use a live_api or replay_benchmark artifact with benchmark_claims_allowed=true."
+        )
 
     by_config = _summarize(run)
     by_category = _summarize_by_category(run)
@@ -166,8 +177,15 @@ def main() -> None:
     print(f"Run ID: {run.get('run_id', 'unknown')}")
     print(f"File: {path}")
     print(f"Result Mode: {mode}")
+    print(f"Benchmark Claims Allowed: {run.get('benchmark_claims_allowed', mode == 'live_api')}")
+    if run.get("task_profile"):
+        print(f"Task Profile: {run['task_profile']}")
+    if run.get("task_selection_note"):
+        print(f"Task Selection: {run['task_selection_note']}")
     if mode == "offline_fixture":
         print("WARNING: offline_fixture metrics are synthetic smoke-run outputs, not benchmark claims.")
+    elif mode == "replay_benchmark":
+        print("Replay benchmark: metrics were deterministically rescored from a frozen artifact.")
 
     print("\nBy Config")
     print(_to_markdown(by_config))
