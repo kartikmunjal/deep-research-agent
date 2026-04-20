@@ -1,14 +1,6 @@
 {
   "version": "1.1",
-  "description": "Evaluation tasks for the Deep Research Agent. Categories: factual (direct verifiable answers), multi_hop (requires connecting information across sources or reasoning steps, includes adversarial multi-hop), unanswerable (no reliable public answer — tests hallucination resistance), conflicting_evidence (sources contradict each other — tests adjudication behavior), gaia_l1 (a small local GAIA Level-1 subset for sanity checks only, not the official validation benchmark).",
-  "selection_methodology": "This task set is hand-authored and curated for diagnostic coverage. It is not a random sample from any benchmark distribution, so scores should be interpreted as controlled research probes rather than claims of general performance.",
-  "category_notes": {
-    "factual": "Questions expected to be answerable by straightforward retrieval of well-established facts.",
-    "multi_hop": "Questions expected to require combining at least two linked facts, sources, or historical steps.",
-    "unanswerable": "Questions intentionally lacking a reliable public answer, used to test abstention and uncertainty signaling.",
-    "conflicting_evidence": "Questions where credible sources disagree and the desired behavior is explicit acknowledgement or careful adjudication.",
-    "gaia_l1": "A 12-task local subset copied into the harness as a sanity check; do not report it as the official GAIA validation result."
-  },
+  "description": "Evaluation tasks for the Deep Research Agent. Four categories: factual (verifiable answers), multi_hop (requires connecting information across sources, includes adversarial multi-hop), unanswerable (no reliable public answer — tests hallucination resistance), conflicting_evidence (sources contradict each other — tests adjudication behavior).",
   "tasks": [
     {
       "id": "F01",

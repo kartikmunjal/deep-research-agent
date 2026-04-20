@@ -19,12 +19,9 @@ from __future__ import annotations
 
 import asyncio
 import os
-import time
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from anthropic import Anthropic, AsyncAnthropic
-    from tavily import TavilyClient, AsyncTavilyClient
+from anthropic import Anthropic, AsyncAnthropic
+from tavily import TavilyClient, AsyncTavilyClient
 
 from .models import ResearchAnswer, Evidence, QueryCost
 from .planner import ResearchPlanner
@@ -68,9 +65,6 @@ class ResearchPipeline:
         model: str = "claude-sonnet-4-6",
         results_per_query: int = 4,
     ):
-        from anthropic import Anthropic, AsyncAnthropic
-        from tavily import TavilyClient, AsyncTavilyClient
-
         anthropic_key = anthropic_api_key or os.environ["ANTHROPIC_API_KEY"]
         tavily_key = tavily_api_key or os.environ["TAVILY_API_KEY"]
 
@@ -112,11 +106,8 @@ class ResearchPipeline:
         """
         cost = QueryCost()
         tool_calls = 0
-        stage_timings: dict[str, float] = {}
-        sub_question_timings: list[dict] = []
 
         # Stage 1: Planning (single Claude call — no parallelism opportunity)
-        planning_t0 = time.perf_counter()
         if skip_planning:
             sub_questions = [question]
             if verbose:
@@ -132,35 +123,19 @@ class ResearchPipeline:
                 print(f"[planner] {len(sub_questions)} sub-questions | {reasoning}")
                 for i, sq in enumerate(sub_questions, 1):
                     print(f"  {i}. {sq}")
-        stage_timings["planning_seconds"] = round(time.perf_counter() - planning_t0, 4)
 
         # Stage 2: Parallel search + semantic compression
         if verbose:
             print(f"[searcher] launching {len(sub_questions)} sub-question searches in parallel...")
 
-        async def _timed_search(sub_question: str) -> tuple[str, list[Evidence], int, float]:
-            t0 = time.perf_counter()
-            evidence, calls = await self.searcher.search_async(sub_question, cost)
-            elapsed = time.perf_counter() - t0
-            return sub_question, evidence, calls, elapsed
-
-        search_t0 = time.perf_counter()
-        search_results = await asyncio.gather(*[_timed_search(sq) for sq in sub_questions])
-        stage_timings["search_seconds"] = round(time.perf_counter() - search_t0, 4)
+        search_results = await asyncio.gather(
+            *[self.searcher.search_async(sq, cost) for sq in sub_questions]
+        )
 
         all_evidence: list[Evidence] = []
-        for sub_question, evidence, calls, elapsed in search_results:
+        for evidence, calls in search_results:
             tool_calls += calls
             all_evidence.extend(evidence)
-            useful_sources = sum(1 for item in evidence if item.search_successful)
-            sub_question_timings.append(
-                {
-                    "sub_question": sub_question,
-                    "search_seconds": round(elapsed, 4),
-                    "tool_calls": calls,
-                    "useful_sources": useful_sources,
-                }
-            )
 
         if verbose:
             good = sum(1 for e in all_evidence if e.search_successful)
@@ -169,12 +144,10 @@ class ResearchPipeline:
         # Stage 3: Synthesis
         if verbose:
             print("[synthesizer] synthesizing answer...")
-        synthesis_t0 = time.perf_counter()
         answer_text, unanswered_sqs, sources = await asyncio.to_thread(
             self.synthesizer.synthesize, question, sub_questions, all_evidence, cost
         )
         tool_calls += 1
-        stage_timings["synthesis_seconds"] = round(time.perf_counter() - synthesis_t0, 4)
 
         # Stage 4: Verification
         claims = []
@@ -183,14 +156,10 @@ class ResearchPipeline:
         if not skip_verification:
             if verbose:
                 print("[verifier] checking claims against evidence...")
-            verification_t0 = time.perf_counter()
             claims, unverified_texts = await asyncio.to_thread(
                 self.verifier.verify, answer_text, all_evidence, sources, cost
             )
             tool_calls += 2
-            stage_timings["verification_seconds"] = round(
-                time.perf_counter() - verification_t0, 4
-            )
             if verbose:
                 verified_count = sum(1 for c in claims if c.verified)
                 print(
@@ -209,8 +178,6 @@ class ResearchPipeline:
             unanswered_sub_questions=unanswered_sqs,
             tool_calls=tool_calls,
             cost=cost,
-            stage_timings=stage_timings,
-            sub_question_timings=sub_question_timings,
         )
 
     # ------------------------------------------------------------------

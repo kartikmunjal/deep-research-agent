@@ -84,18 +84,6 @@ class ResearchVerifier:
         if not claims_raw:
             return [], []
 
-        return self.verify_claims(claims_raw, evidence, cost)
-
-    def verify_claims(
-        self,
-        claims_raw: list[str],
-        evidence: list[Evidence],
-        cost: QueryCost | None = None,
-    ) -> tuple[list[Claim], list[str]]:
-        """Verify an explicit list of claims against retrieved evidence."""
-        if not claims_raw:
-            return [], []
-
         good_evidence = [e for e in evidence if e.search_successful and e.extracted_text]
         evidence_lines = []
         for i, ev in enumerate(good_evidence):
