@@ -1,4 +1,4 @@
-.PHONY: install install-dev demo eval eval-offline summarize-latest summarize-live test
+.PHONY: install install-dev demo eval eval-offline compare-architectures summarize-latest summarize-live test
 
 install:
 	pip install -r requirements.txt
@@ -14,6 +14,9 @@ eval:
 
 eval-offline:
 	python3 -m eval.harness --offline
+
+compare-architectures:
+	python scripts/compare_architectures.py --offline
 
 summarize-latest:
 	python -m eval.summarize_results --latest

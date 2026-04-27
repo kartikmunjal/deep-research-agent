@@ -79,6 +79,7 @@ Core modules:
 - `synthesizer`: evidence-to-answer generation with citations
 - `verifier`: claim-level verification against extracted evidence
 - `pipeline`: orchestration, ablations, and failure recovery surfacing
+- `agent_langgraph`: parallel LangGraph orchestration with conditional replanning and memory
 
 ## What Is Different Here
 
@@ -202,6 +203,21 @@ make eval
 make eval-offline
 make summarize-latest
 make test
+```
+
+## LangGraph Variant
+
+The repo also includes a parallel LangGraph implementation in `src/agent_langgraph/`.
+It reuses the same planner/searcher/synthesizer/verifier components, but expresses
+the orchestration as a `StateGraph` with:
+- typed shared state,
+- conditional replanning when search coverage collapses,
+- thread-level persistence via LangGraph memory.
+
+To compare the original orchestration with the LangGraph variant:
+
+```bash
+python scripts/compare_architectures.py --offline
 ```
 
 

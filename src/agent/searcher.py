@@ -107,6 +107,14 @@ class ResearchSearcher:
 
         return evidence, tool_calls
 
+    def search_all(
+        self,
+        sub_questions: list[str],
+        cost: QueryCost | None = None,
+    ) -> tuple[list[Evidence], int, list[str]]:
+        """Search all sub-questions and return evidence, tool calls, and failures."""
+        return asyncio.run(self.search_all_async(sub_questions, cost))
+
     def _search_and_extract(
         self, sub_question: str, query: str, cost: QueryCost | None
     ) -> tuple[list[Evidence], int]:
@@ -205,6 +213,23 @@ class ResearchSearcher:
             ]
 
         return evidence, tool_calls
+
+    async def search_all_async(
+        self,
+        sub_questions: list[str],
+        cost: QueryCost | None = None,
+    ) -> tuple[list[Evidence], int, list[str]]:
+        """Parallel search across all sub-questions."""
+        results = await asyncio.gather(*[self.search_async(sq, cost) for sq in sub_questions])
+        all_evidence: list[Evidence] = []
+        total_calls = 0
+        failures: list[str] = []
+        for sub_question, (evidence, calls) in zip(sub_questions, results):
+            total_calls += calls
+            all_evidence.extend(evidence)
+            if not any(item.search_successful for item in evidence):
+                failures.append(sub_question)
+        return all_evidence, total_calls, failures
 
     async def _search_and_extract_async(
         self, sub_question: str, query: str, cost: QueryCost | None

@@ -19,9 +19,11 @@ from __future__ import annotations
 
 import asyncio
 import os
+from typing import TYPE_CHECKING
 
-from anthropic import Anthropic, AsyncAnthropic
-from tavily import TavilyClient, AsyncTavilyClient
+if TYPE_CHECKING:
+    from anthropic import Anthropic, AsyncAnthropic
+    from tavily import TavilyClient, AsyncTavilyClient
 
 from .models import ResearchAnswer, Evidence, QueryCost
 from .planner import ResearchPlanner
@@ -65,6 +67,9 @@ class ResearchPipeline:
         model: str = "claude-sonnet-4-6",
         results_per_query: int = 4,
     ):
+        from anthropic import Anthropic, AsyncAnthropic
+        from tavily import TavilyClient, AsyncTavilyClient
+
         anthropic_key = anthropic_api_key or os.environ["ANTHROPIC_API_KEY"]
         tavily_key = tavily_api_key or os.environ["TAVILY_API_KEY"]
 

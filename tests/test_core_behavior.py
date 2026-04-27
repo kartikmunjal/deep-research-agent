@@ -78,12 +78,14 @@ def test_verifier_returns_claim_level_judgments() -> None:
 
 
 class _PlannerStub:
-    def decompose(self, question: str) -> tuple[list[str], str]:
+    def decompose(self, question: str, cost: object | None = None) -> tuple[list[str], str]:
+        _ = cost
         return [f"sub-question: {question}"], "stub"
 
 
 class _SearcherStub:
-    def search(self, sub_question: str) -> tuple[list[Evidence], int]:
+    async def search_async(self, sub_question: str, cost: object | None = None) -> tuple[list[Evidence], int]:
+        _ = cost
         return [
             Evidence(
                 url="",
@@ -101,7 +103,9 @@ class _SynthesizerStub:
         question: str,
         sub_questions: list[str],
         evidence: list[Evidence],
+        cost: object | None = None,
     ) -> tuple[str, list[str], list[dict]]:
+        _ = cost
         return (
             "Insufficient evidence to answer all sub-questions.",
             sub_questions,

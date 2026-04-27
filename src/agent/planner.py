@@ -41,6 +41,22 @@ Respond with a JSON object in this exact format:
 Research question: {question}"""
 
 
+REPLAN_PROMPT = """You are a research planner repairing a failed research plan.
+
+Original research question: {question}
+
+Sub-questions that failed to retrieve useful evidence:
+{failures}
+
+Reformulate the original research question from a different angle so that a fresh decomposition is more likely to retrieve useful evidence.
+
+Respond with a JSON object:
+{{
+  "reformulated_question": "new question wording",
+  "reasoning": "one sentence describing the new angle"
+}}"""
+
+
 class ResearchPlanner:
     """Generates a search plan from an input research question."""
 
@@ -74,3 +90,34 @@ class ResearchPlanner:
             raise ValueError("Planner returned invalid sub_questions payload")
 
         return [str(sq) for sq in sub_questions], str(reasoning)
+
+    def replan_question(
+        self,
+        question: str,
+        failed_sub_questions: list[str],
+        cost: QueryCost | None = None,
+    ) -> tuple[str, str]:
+        """Reformulate the original question when search coverage collapses."""
+        failures = "\n".join(f"- {item}" for item in failed_sub_questions) or "- none recorded"
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=256,
+            messages=[
+                {
+                    "role": "user",
+                    "content": REPLAN_PROMPT.format(question=question, failures=failures),
+                }
+            ],
+        )
+        if cost is not None:
+            cost.add_response(response.usage)
+
+        raw = response.content[0].text.strip()
+        raw = re.sub(r"^```(?:json)?\s*", "", raw)
+        raw = re.sub(r"\s*```$", "", raw)
+        parsed = json.loads(raw)
+        reformulated = str(parsed["reformulated_question"]).strip()
+        reasoning = str(parsed.get("reasoning", "")).strip()
+        if not reformulated:
+            raise ValueError("Planner returned empty reformulated_question")
+        return reformulated, reasoning
