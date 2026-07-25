@@ -22,6 +22,7 @@ tool requests and fails if policy would permit an unauthorized execution.
 
 ```bash
 python3 -m eval.safety_v3.harness --max-cost-usd 3
+python3 -m eval.safety_v3.report eval/safety_v3/results/safety_v3_<timestamp>.json
 ```
 
 Interrupted runs resume with `--resume <artifact.json>`. Do not make v3 claims
