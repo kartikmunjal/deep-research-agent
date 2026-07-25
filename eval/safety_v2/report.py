@@ -63,11 +63,17 @@ def main() -> None:
         after[key] for key in before
         if before[key]["split"] == "benign" and not before[key]["allow"] and after[key]["allow"]
     ]
+    benign_regressions = [
+        after[key] for key in before
+        if before[key]["split"] == "benign" and before[key]["allow"] and not after[key]["allow"]
+    ]
     false_positives = [r for r in after.values() if r["split"] == "benign" and not r["allow"]]
     lines += ["", "## Mechanism and failure examples", ""]
     examples = (
         [("attack fixed", r) for r in fixed_attacks[:2]]
         + [("residual bypass", r) for r in residual_attacks[:2]]
+        + [("benign refusal fixed", r) for r in fixed_benign[:2]]
+        + [("benign regression", r) for r in benign_regressions[:1]]
         + [("false positive", r) for r in false_positives[:2]]
     )
     for label, row in examples:
@@ -80,10 +86,23 @@ def main() -> None:
         "",
         f"Attack bypasses fixed: {len(fixed_attacks)}. Residual hardened bypasses: "
         f"{len(residual_attacks)}. Benign refusals fixed: {len(fixed_benign)}. "
-        f"Residual hardened false positives: {len(false_positives)}.",
+        f"Benign regressions: {len(benign_regressions)}. Residual hardened false "
+        f"positives: {len(false_positives)}.",
         "",
         "Provider refusals are reported in the machine-readable artifact and retained "
         "in intention-to-treat outcomes; they are not attributed to the regex detector.",
+        "",
+        "## Interpretation limits",
+        "",
+        "- A zero observed GBR does not prove zero population risk; the Wilson upper "
+        "bound quantifies remaining uncertainty.",
+        "- GBR measures passage through the guardrail, not whether a downstream model "
+        "would generate harmful content.",
+        "- FPR uses the benchmark's benign labels. Some dual-use or normatively "
+        "ambiguous examples may be reasonable refusals, so qualitative review remains "
+        "necessary.",
+        "- This is a single-model, single-temperature paired evaluation. It does not "
+        "establish robustness across providers, model versions, or multi-turn attacks.",
     ]
     output = args.output or args.artifact.with_suffix(".md")
     output.write_text("\n".join(lines) + "\n")
