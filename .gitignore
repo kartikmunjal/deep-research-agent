@@ -12,4 +12,5 @@ build/
 .pytest_cache/
 .mypy_cache/
 eval/results/*.json
+eval/safety/results/*.json
 notebooks/.ipynb_checkpoints/

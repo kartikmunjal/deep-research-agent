@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from tavily import TavilyClient, AsyncTavilyClient
 
 from .models import ResearchAnswer, Evidence, QueryCost
+from .guardrail import ConstitutionalGuardrail, GuardrailBlocked, GuardrailMode
 from .planner import ResearchPlanner
 from .searcher import ResearchSearcher
 from .synthesizer import ResearchSynthesizer
@@ -66,6 +67,8 @@ class ResearchPipeline:
         tavily_api_key: str | None = None,
         model: str = "claude-sonnet-4-6",
         results_per_query: int = 4,
+        guardrail_mode: GuardrailMode = "hardened",
+        enable_guardrail: bool = True,
     ):
         from anthropic import Anthropic, AsyncAnthropic
         from tavily import TavilyClient, AsyncTavilyClient
@@ -90,6 +93,11 @@ class ResearchPipeline:
         )
         self.synthesizer = ResearchSynthesizer(self._anthropic, model)
         self.verifier = ResearchVerifier(self._anthropic, model)
+        self.guardrail = (
+            ConstitutionalGuardrail(self._anthropic, model, guardrail_mode)
+            if enable_guardrail
+            else None
+        )
 
     # ------------------------------------------------------------------
     # Async-first implementation
@@ -111,6 +119,16 @@ class ResearchPipeline:
         """
         cost = QueryCost()
         tool_calls = 0
+
+        # Untrusted user input is classified before it can influence planning or tools.
+        guardrail = getattr(self, "guardrail", None)
+        if guardrail is not None:
+            decision = await asyncio.to_thread(
+                guardrail.evaluate, question, "user_prompt", cost
+            )
+            tool_calls += 1
+            if not decision.allow:
+                raise GuardrailBlocked(decision)
 
         # Stage 1: Planning (single Claude call — no parallelism opportunity)
         if skip_planning:
@@ -141,6 +159,22 @@ class ResearchPipeline:
         for evidence, calls in search_results:
             tool_calls += calls
             all_evidence.extend(evidence)
+
+        # Retrieved content is data, never instruction. Screen it before synthesis.
+        if guardrail is not None:
+            screened_evidence: list[Evidence] = []
+            for item in all_evidence:
+                if not item.search_successful or not item.extracted_text:
+                    screened_evidence.append(item)
+                    continue
+                decision = await asyncio.to_thread(
+                    guardrail.evaluate, item.extracted_text, "retrieved_content", cost
+                )
+                if decision.detector == "llm":
+                    tool_calls += 1
+                if decision.allow:
+                    screened_evidence.append(item)
+            all_evidence = screened_evidence
 
         if verbose:
             good = sum(1 for e in all_evidence if e.search_successful)

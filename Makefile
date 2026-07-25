@@ -1,4 +1,4 @@
-.PHONY: install install-dev demo eval eval-offline compare-architectures summarize-latest summarize-live test
+.PHONY: install install-dev demo eval eval-offline safety-data safety-dry-run safety-offline compare-architectures summarize-latest summarize-live test
 
 install:
 	pip install -r requirements.txt
@@ -14,6 +14,15 @@ eval:
 
 eval-offline:
 	python3 -m eval.harness --offline
+
+safety-data:
+	python3 scripts/build_safety_eval_dataset.py
+
+safety-dry-run:
+	python3 -m eval.safety.harness --dry-run
+
+safety-offline:
+	python3 -m eval.safety.harness --offline
 
 compare-architectures:
 	python scripts/compare_architectures.py --offline

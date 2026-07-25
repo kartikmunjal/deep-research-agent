@@ -66,8 +66,10 @@ Complex research questions are multi-hop and high-risk for hallucination. A prac
 
 ```
 Question
+    -> Constitutional Guardrail (user input)
     -> Planner (3-5 independently searchable sub-questions)
     -> Searcher (web retrieval + semantic compression)
+    -> Constitutional Guardrail (untrusted retrieved content)
     -> Synthesizer (structured answer with inline [N] citations)
     -> Verifier (claim extraction + claim-level grounding)
     -> Final answer + unverified claim report + coverage gaps
@@ -79,6 +81,7 @@ Core modules:
 - `synthesizer`: evidence-to-answer generation with citations
 - `verifier`: claim-level verification against extracted evidence
 - `pipeline`: orchestration, ablations, and failure recovery surfacing
+- `guardrail`: versioned baseline/hardened safety classifier and injection detector
 - `agent_langgraph`: parallel LangGraph orchestration with conditional replanning and memory
 
 ## What Is Different Here
@@ -130,6 +133,23 @@ Failure recovery example:
   - `uncertainty_reported` (unanswerable category)
 
 See `eval/results/README.md` for metric definitions and interpretation.
+
+### Jailbreak and prompt-injection robustness
+
+The safety eval deterministically builds 50 public-set/DAN-style direct attacks,
+18 agent-specific indirect prompt injections, and 25 benign-adjacent checks.
+It reports attack success rate (ASR) and false-positive rate (FPR), each with
+`N_trials` and a bootstrap 95% confidence interval. Offline runs validate plumbing
+only; only `live_api` artifacts are performance evidence.
+
+```bash
+make safety-data
+make safety-dry-run
+make safety-offline
+ANTHROPIC_API_KEY=... python -m eval.safety.harness --max-cost-usd 3
+```
+
+See `eval/safety/README.md` for the threat model and interpretation.
 
 ## Key Quantitative Results
 
