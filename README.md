@@ -154,6 +154,11 @@ python3 -m eval.safety.harness --max-cost-usd 1
 
 See `eval/safety/README.md` for the threat model and interpretation.
 
+The preregistered v2 study replaces bare harmful goals with real published
+JailbreakBench attack artifacts, separates direct and indirect guardrail-bypass
+rates, uses Wilson confidence intervals and paired exact tests, and checkpoints
+every paid decision. See `RESEARCH_PLAN_V2.md` and `eval/safety_v2/README.md`.
+
 ## Key Quantitative Results
 
 - Planning improves completeness relative to no-planning baseline.

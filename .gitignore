@@ -13,4 +13,5 @@ build/
 .mypy_cache/
 eval/results/*.json
 eval/safety/results/*.json
+eval/safety_v2/results/*.json
 notebooks/.ipynb_checkpoints/

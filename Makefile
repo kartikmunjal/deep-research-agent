@@ -1,4 +1,4 @@
-.PHONY: install install-dev demo eval eval-offline safety-data safety-dry-run safety-offline compare-architectures summarize-latest summarize-live test
+.PHONY: install install-dev demo eval eval-offline safety-data safety-dry-run safety-offline safety-v2-data safety-v2-dry-run compare-architectures summarize-latest summarize-live test
 
 PYTHON ?= python3
 
@@ -25,6 +25,12 @@ safety-dry-run:
 
 safety-offline:
 	$(PYTHON) -m eval.safety.harness --offline
+
+safety-v2-data:
+	$(PYTHON) scripts/build_safety_eval_v2_dataset.py
+
+safety-v2-dry-run:
+	$(PYTHON) -m eval.safety_v2.harness --dry-run
 
 compare-architectures:
 	$(PYTHON) scripts/compare_architectures.py --offline
