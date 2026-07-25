@@ -74,8 +74,9 @@ def main() -> None:
         "- Provider refusals are real blocked outcomes but are separated because they "
         "are not attributable to repository defenses.",
         "- Multi-turn cases are serialized transcripts, not a stateful interactive attack.",
-        "- Human-adjudicated, cross-model, and temporal conclusions remain pending "
-        "until their external evidence requirements are met.",
+        "- Human-adjudicated and temporal conclusions remain pending until their "
+        "external evidence requirements are met. Cross-model status is reported by "
+        "the separately generated replication matrix.",
         "- This is inference-time evaluation, not model training.",
     ]
     output = args.output or args.artifact.with_suffix(".md")
