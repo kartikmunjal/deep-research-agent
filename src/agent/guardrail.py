@@ -186,7 +186,21 @@ class ConstitutionalGuardrail:
         raw = "\n".join(text_blocks)
         raw = re.sub(r"^```(?:json)?\s*", "", raw)
         raw = re.sub(r"\s*```$", "", raw)
-        parsed = json.loads(raw)
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            # Some providers append explanatory prose after the requested object.
+            # Decode exactly the first JSON value; schema validation below remains
+            # strict, while the decision reason records that normalization occurred.
+            start = raw.find("{")
+            if start < 0:
+                raise
+            parsed, end = json.JSONDecoder().raw_decode(raw[start:])
+            if raw[start + end:].strip():
+                parsed["reason"] = (
+                    f"{parsed.get('reason', 'No reason returned.')} "
+                    "[normalized trailing provider text]"
+                )
         if not isinstance(parsed.get("allow"), bool):
             raise ValueError("Guardrail response is missing boolean 'allow'")
         return GuardrailDecision(

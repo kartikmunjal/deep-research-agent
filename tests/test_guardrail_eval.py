@@ -71,6 +71,25 @@ def test_empty_provider_refusal_is_auditable_blocked_trial():
     assert "stop_reason=refusal" in decision.reason
 
 
+def test_guardrail_normalizes_trailing_provider_text():
+    class TrailingMessages:
+        def create(self, **kwargs):
+            response = _Response()
+            response.content = [
+                _Part('{"allow": true, "reason": "Safe analysis", "category": "safe"}\\nAdditional explanation.')
+            ]
+            return response
+
+    class TrailingClient:
+        messages = TrailingMessages()
+
+    decision = ConstitutionalGuardrail(TrailingClient(), "test", "hardened_v3").evaluate(
+        "academic analysis", "user_prompt"
+    )
+    assert decision.allow is True
+    assert "normalized trailing provider text" in decision.reason
+
+
 def test_metrics_report_n_and_ci():
     rows = [
         {"split": "attack", "allow": False},
