@@ -14,4 +14,9 @@ build/
 eval/results/*.json
 eval/safety/results/*.json
 eval/safety_v2/results/*.json
+eval/safety_v3/results/*.json
+reviewer_*.csv
+agreement.json
+model_matrix.json
+temporal.json
 notebooks/.ipynb_checkpoints/

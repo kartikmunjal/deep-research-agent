@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 
 from .models import ResearchAnswer, Evidence, QueryCost
 from .guardrail import ConstitutionalGuardrail, GuardrailBlocked, GuardrailMode
+from .tool_policy import ToolPolicy
 from .planner import ResearchPlanner
 from .searcher import ResearchSearcher
 from .synthesizer import ResearchSynthesizer
@@ -69,6 +70,7 @@ class ResearchPipeline:
         results_per_query: int = 4,
         guardrail_mode: GuardrailMode = "hardened",
         enable_guardrail: bool = True,
+        tool_policy: ToolPolicy | None = None,
     ):
         from anthropic import Anthropic, AsyncAnthropic
         from tavily import TavilyClient, AsyncTavilyClient
@@ -86,10 +88,12 @@ class ResearchPipeline:
         self.model = model
 
         self.planner = ResearchPlanner(self._anthropic, model)
+        self.tool_policy = tool_policy or ToolPolicy()
         self.searcher = ResearchSearcher(
             self._anthropic, self._tavily, model, results_per_query,
             async_anthropic_client=self._async_anthropic,
             async_tavily_client=self._async_tavily,
+            tool_policy=self.tool_policy,
         )
         self.synthesizer = ResearchSynthesizer(self._anthropic, model)
         self.verifier = ResearchVerifier(self._anthropic, model)

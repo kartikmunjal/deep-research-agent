@@ -31,6 +31,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from anthropic import Anthropic, AsyncAnthropic
     from tavily import TavilyClient, AsyncTavilyClient
+    from .tool_policy import ToolPolicy
 
 from .models import Evidence, QueryCost
 
@@ -69,6 +70,7 @@ class ResearchSearcher:
         max_content_chars: int = 3000,
         async_anthropic_client: AsyncAnthropic | None = None,
         async_tavily_client: AsyncTavilyClient | None = None,
+        tool_policy: ToolPolicy | None = None,
     ):
         self.anthropic = anthropic_client
         self.tavily = tavily_client
@@ -77,6 +79,12 @@ class ResearchSearcher:
         self.max_content_chars = max_content_chars
         self._async_anthropic = async_anthropic_client
         self._async_tavily = async_tavily_client
+        self.tool_policy = tool_policy
+
+    def _tool_allowed(self, tool: str, arguments: dict) -> bool:
+        if self.tool_policy is None:
+            return True
+        return self.tool_policy.evaluate(tool, arguments).action == "allow"
 
     # ------------------------------------------------------------------
     # Sync interface (single sub-question, blocking)
@@ -119,6 +127,8 @@ class ResearchSearcher:
         self, sub_question: str, query: str, cost: QueryCost | None
     ) -> tuple[list[Evidence], int]:
         tool_calls = 0
+        if not self._tool_allowed("search", {"query": query}):
+            return [], tool_calls
         try:
             results = self.tavily.search(
                 query=query,
@@ -134,6 +144,8 @@ class ResearchSearcher:
 
         evidence = []
         for r in results.get("results", []):
+            if not self._tool_allowed("read_url", {"url": r.get("url", "")}):
+                continue
             content = (r.get("raw_content") or r.get("content") or "").strip()
             if not content:
                 continue
@@ -235,6 +247,8 @@ class ResearchSearcher:
         self, sub_question: str, query: str, cost: QueryCost | None
     ) -> tuple[list[Evidence], int]:
         tool_calls = 0
+        if not self._tool_allowed("search", {"query": query}):
+            return [], tool_calls
         try:
             if self._async_tavily is not None:
                 results = await self._async_tavily.search(
@@ -261,6 +275,8 @@ class ResearchSearcher:
         tasks = []
         raw_results = results.get("results", [])
         for r in raw_results:
+            if not self._tool_allowed("read_url", {"url": r.get("url", "")}):
+                continue
             content = (r.get("raw_content") or r.get("content") or "").strip()
             if not content:
                 continue

@@ -159,6 +159,11 @@ JailbreakBench attack artifacts, separates direct and indirect guardrail-bypass
 rates, uses Wilson confidence intervals and paired exact tests, and checkpoints
 every paid decision. See `RESEARCH_PLAN_V2.md` and `eval/safety_v2/README.md`.
 
+The separately preregistered v3 program adds adaptive/obfuscated attacks,
+quote-aware detection, deterministic tool authorization, safe canary execution,
+blinded human-label workflows, and cross-model/temporal replication validation.
+See `RESEARCH_PLAN_V3.md` and `eval/safety_v3/README.md`.
+
 ## Key Quantitative Results
 
 - Planning improves completeness relative to no-planning baseline.

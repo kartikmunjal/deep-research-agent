@@ -15,6 +15,7 @@ from src.agent.planner import ResearchPlanner
 from src.agent.searcher import ResearchSearcher
 from src.agent.synthesizer import ResearchSynthesizer
 from src.agent.verifier import ResearchVerifier
+from src.agent.tool_policy import ToolPolicy
 from .memory import build_memory_saver
 
 
@@ -69,6 +70,7 @@ class LangGraphResearchPipeline:
         self._tavily = TavilyClient(api_key=tavily_key)
         self._async_tavily = AsyncTavilyClient(api_key=tavily_key)
         self.model = model
+        self.tool_policy = ToolPolicy()
 
         self.planner = ResearchPlanner(self._anthropic, model)
         self.searcher = ResearchSearcher(
@@ -78,6 +80,7 @@ class LangGraphResearchPipeline:
             results_per_query,
             async_anthropic_client=self._async_anthropic,
             async_tavily_client=self._async_tavily,
+            tool_policy=self.tool_policy,
         )
         self.synthesizer = ResearchSynthesizer(self._anthropic, model)
         self.verifier = ResearchVerifier(self._anthropic, model)
