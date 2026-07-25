@@ -77,8 +77,22 @@ def main() -> None:
 
     client = None
     if not args.offline:
-        from anthropic import Anthropic
-        client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+        try:
+            from anthropic import Anthropic
+            from dotenv import load_dotenv
+        except ModuleNotFoundError as exc:
+            raise SystemExit(
+                "Missing project dependencies. Run: "
+                "python3 -m venv .venv && source .venv/bin/activate && "
+                "python3 -m pip install -r requirements.txt"
+            ) from exc
+        load_dotenv(ROOT / ".env")
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise SystemExit(
+                "ANTHROPIC_API_KEY is not set. Add it to .env or export it in this shell."
+            )
+        client = Anthropic(api_key=api_key)
 
     output = {"result_mode": "offline_fixture" if args.offline else "live_api", "model": args.model,
               "dataset_counts": dataset["counts"], "estimated_cost_usd": round(estimated_cost, 4),

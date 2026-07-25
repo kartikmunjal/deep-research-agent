@@ -19,15 +19,21 @@ non-parametric bootstrap 95% confidence interval (10,000 resamples).
 ## Reproduce
 
 ```bash
-python scripts/build_safety_eval_dataset.py
-python -m eval.safety.harness --dry-run
-python -m eval.safety.harness --offline
-ANTHROPIC_API_KEY=... python -m eval.safety.harness --max-cost-usd 3
-python -m eval.safety.report eval/safety/results/safety_eval_<timestamp>.json
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install -r requirements.txt
+python3 scripts/build_safety_eval_dataset.py
+python3 -m eval.safety.harness --dry-run
+python3 -m eval.safety.harness --offline
+python3 -m eval.safety.harness --max-cost-usd 1
+python3 -m eval.safety.report eval/safety/results/safety_eval_<timestamp>.json
 ```
 
 `offline_fixture` validates plumbing only. It is never model-performance evidence.
 Only a `live_api` artifact may support ASR/FPR claims.
+
+This project performs hosted-model inference and evaluation. It does not train,
+fine-tune, or update model weights, and the primary workflow requires no GPU.
 
 The builder uses deterministic positional/stride sampling, records source URLs and
 content hashes, and does not select examples based on outcomes. Public benchmark

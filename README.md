@@ -2,6 +2,9 @@
 
 A modular deep-research pipeline that decomposes a question into sub-questions, retrieves and semantically compresses evidence, synthesizes a cited answer, and verifies each factual claim against evidence before returning results.
 
+This repository runs hosted-model inference and evaluation; it does not train or
+fine-tune model weights and does not require a GPU.
+
 ## Historical Benchmark Snapshot (Reference)
 
 These are historical reference metrics from an earlier live API benchmark setup (28 tasks: factual, multi-hop, unanswerable). Treat them as context, not as the current run-state in this branch.
@@ -28,11 +31,11 @@ GAIA L1 is a useful sanity-check floor: an agent that cannot reliably answer the
 | Planning, no verification | 83% |
 | Planning + verification (full pipeline) | 92% |
 
-Run GAIA-only: `python -m eval.harness --category gaia_l1`
+Run GAIA-only: `python3 -m eval.harness --category gaia_l1`
 
 ## Cost / Latency Pareto
 
-Async parallel search (see below) shifts the efficiency frontier meaningfully. The table below shows the cost-accuracy trade-off across ablation configurations (synthetic estimates; run `python -m eval.harness` for live numbers):
+Async parallel search (see below) shifts the efficiency frontier meaningfully. The table below shows the cost-accuracy trade-off across ablation configurations (synthetic estimates; run `python3 -m eval.harness` for live numbers):
 
 | Configuration | Est. Cost / Query | Latency | Hallucination Rate |
 |---|:---:|:---:|:---:|
@@ -146,7 +149,7 @@ only; only `live_api` artifacts are performance evidence.
 make safety-data
 make safety-dry-run
 make safety-offline
-ANTHROPIC_API_KEY=... python -m eval.safety.harness --max-cost-usd 3
+python3 -m eval.safety.harness --max-cost-usd 1
 ```
 
 See `eval/safety/README.md` for the threat model and interpretation.
@@ -171,9 +174,9 @@ See `eval/safety/README.md` for the threat model and interpretation.
 ```bash
 git clone https://github.com/kartikmunjal/deep-research-agent
 cd deep-research-agent
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+python3 -m pip install -r requirements.txt
 ```
 
 ### 2. Configure keys
@@ -186,13 +189,13 @@ cp .env.example .env
 ### 3. Run demo
 
 ```bash
-python demo.py "How did RLHF change LLM alignment research?"
+python3 demo.py "How did RLHF change LLM alignment research?"
 ```
 
 ### 4. Run eval harness (paid API mode)
 
 ```bash
-python -m eval.harness
+python3 -m eval.harness
 ```
 
 ### 5. Zero-cost offline eval (no API calls)
@@ -206,13 +209,13 @@ This writes a timestamped synthetic artifact marked `result_mode=offline_fixture
 ### 6. Summarize latest run into a table
 
 ```bash
-python -m eval.summarize_results --latest
+python3 -m eval.summarize_results --latest
 ```
 
 To enforce benchmark-only summaries:
 
 ```bash
-python -m eval.summarize_results --latest --mode live_api --require-live
+python3 -m eval.summarize_results --latest --mode live_api --require-live
 ```
 
 ### 7. Optional Makefile shortcuts
@@ -237,7 +240,7 @@ the orchestration as a `StateGraph` with:
 To compare the original orchestration with the LangGraph variant:
 
 ```bash
-python scripts/compare_architectures.py --offline
+python3 scripts/compare_architectures.py --offline
 ```
 
 
@@ -255,7 +258,7 @@ python3 -m eval.harness --offline
 ```bash
 pip install -r requirements.txt
 cp .env.example .env
-python demo.py "What changed in post-training after RLHF?"
+python3 demo.py "What changed in post-training after RLHF?"
 ```
 
 ## Repo Structure
