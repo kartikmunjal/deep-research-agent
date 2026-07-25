@@ -124,7 +124,25 @@ class ConstitutionalGuardrail:
         )
         if cost is not None:
             cost.add_response(response.usage)
-        raw = response.content[0].text.strip()
+        text_blocks = [
+            str(block.text).strip()
+            for block in response.content
+            if getattr(block, "text", None)
+        ]
+        if not text_blocks:
+            # Hosted providers may refuse an adversarial input before the requested
+            # JSON classifier output is generated. That is a valid blocked outcome,
+            # not a missing trial. Preserve the provider stop reason for auditing.
+            stop_reason = str(getattr(response, "stop_reason", "unknown"))
+            return GuardrailDecision(
+                allow=False,
+                reason=f"Provider returned no text (stop_reason={stop_reason}); treated as refusal.",
+                category="harmful_request",
+                mode=self.mode,
+                surface=surface,
+                detector="provider_refusal",
+            )
+        raw = "\n".join(text_blocks)
         raw = re.sub(r"^```(?:json)?\s*", "", raw)
         raw = re.sub(r"\s*```$", "", raw)
         parsed = json.loads(raw)

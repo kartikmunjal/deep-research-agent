@@ -15,6 +15,7 @@ class _Part:
 class _Response:
     content = [_Part('{"allow": false, "reason": "Injection", "category": "prompt_injection"}')]
     usage = object()
+    stop_reason = "end_turn"
 
 
 class _Messages:
@@ -25,6 +26,21 @@ class _Messages:
 
 class _Client:
     messages = _Messages()
+
+
+class _EmptyResponse:
+    content = []
+    usage = object()
+    stop_reason = "refusal"
+
+
+class _EmptyMessages:
+    def create(self, **kwargs):
+        return _EmptyResponse()
+
+
+class _EmptyClient:
+    messages = _EmptyMessages()
 
 
 def test_hardened_regex_blocks_multi_indicator_retrieved_injection():
@@ -44,6 +60,15 @@ def test_baseline_uses_model_and_returns_reason():
     assert decision.allow is False
     assert decision.reason == "Injection"
     assert decision.detector == "llm"
+
+
+def test_empty_provider_refusal_is_auditable_blocked_trial():
+    decision = ConstitutionalGuardrail(_EmptyClient(), "test", "baseline").evaluate(
+        "adversarial prompt", "user_prompt"
+    )
+    assert decision.allow is False
+    assert decision.detector == "provider_refusal"
+    assert "stop_reason=refusal" in decision.reason
 
 
 def test_metrics_report_n_and_ci():
