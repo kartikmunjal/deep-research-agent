@@ -214,7 +214,7 @@ class ConstitutionalGuardrail:
         }[self.mode]
         response = self.client.messages.create(
             model=self.model,
-            max_tokens=160,
+            max_tokens=320,
             temperature=0,
             messages=[{"role": "user", "content": template.format(surface=surface, text=text)}],
         )

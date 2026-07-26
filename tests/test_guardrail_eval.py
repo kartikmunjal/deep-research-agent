@@ -21,6 +21,7 @@ class _Response:
 class _Messages:
     def create(self, **kwargs):
         assert kwargs["temperature"] == 0
+        assert kwargs["max_tokens"] == 320
         return _Response()
 
 
