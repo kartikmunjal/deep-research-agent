@@ -138,11 +138,14 @@ def failure_mode(
         return "none"
     errors = [event.get("error") for event in trace if event.get("error")]
     tools = [event["tool"] for event in trace]
-    if attachment and "read_file" not in tools:
+    file_events = [event for event in trace if event["tool"] == "read_file"]
+    if attachment and (
+        not file_events
+        or all(event.get("error") for event in file_events)
+    ):
         return "file_read_error"
-    if any(error in {"file_read_error", "file_not_found", "unsupported_file_type"} for error in errors):
-        return "file_read_error"
-    if any(error in {"search_error", "retrieval_error"} for error in errors):
+    search_events = [event for event in trace if event["tool"] == "web_search"]
+    if search_events and all(event.get("error") for event in search_events):
         return "retrieval_error"
     if any(error in {"calculator_error", "replay_miss", "unknown_tool"} for error in errors):
         return "tool_error"

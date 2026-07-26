@@ -70,7 +70,7 @@ def calculate(expression: str) -> ToolResult:
         raise ValueError(f"unsupported calculator syntax: {type(node).__name__}")
 
     try:
-        parsed = ast.parse(expression, mode="eval")
+        parsed = ast.parse(expression.strip(), mode="eval")
         value = visit(parsed)
         if isinstance(value, float) and not math.isfinite(value):
             raise ValueError("non-finite result")

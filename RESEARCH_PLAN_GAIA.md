@@ -30,6 +30,11 @@ execution, or the model provider?
   after an integrity pilot revealed that official Level 1 contains MP3 files;
   the user explicitly approved sending those two gated audio attachments solely
   for transcription. The path-defective pilot is marked invalid.
+- A second integrity run exposed a calculator whitespace defect and an
+  over-broad file-failure label. Before the first reportable full run, arithmetic
+  input was normalized with `strip()`, and `file_read_error` was restricted to
+  attachment tasks with no successful file read. That interrupted artifact is
+  also marked invalid and retained privately.
 
 ## Comparison
 

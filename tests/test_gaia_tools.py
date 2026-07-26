@@ -7,6 +7,7 @@ from eval.gaia.tools import calculate, read_file, transcribe_audio
 
 def test_calculator_executes_restricted_arithmetic():
     assert calculate("(7 + 5) * 3").text == "36"
+    assert calculate("\n  (7 + 5) * 3\n").text == "36"
     assert calculate("__import__('os').system('echo unsafe')").error == "calculator_error"
 
 
@@ -114,4 +115,23 @@ def test_failure_attribution_and_final_answer():
             trace=[{"tool": "web_search", "error": "retrieval_error"}],
         )
         == "retrieval_error"
+    )
+    assert (
+        failure_mode(
+            correct=False,
+            attachment=False,
+            trace=[{"tool": "read_file", "error": "file_not_found"}],
+        )
+        == "reasoning_error"
+    )
+    assert (
+        failure_mode(
+            correct=False,
+            attachment=True,
+            trace=[
+                {"tool": "read_file", "error": None},
+                {"tool": "read_file", "error": "file_not_found"},
+            ],
+        )
+        == "reasoning_error"
     )
