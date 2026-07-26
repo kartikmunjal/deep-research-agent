@@ -20,6 +20,8 @@ def test_openai_adapter_maps_response_to_guardrail_shape():
         def create(self, **kwargs):
             assert kwargs["model"] == "snapshot"
             assert kwargs["response_format"] == {"type": "json_object"}
+            assert kwargs["reasoning_effort"] == "minimal"
+            assert kwargs["max_completion_tokens"] == 1024
             return completion
 
     client = SimpleNamespace(chat=SimpleNamespace(completions=Completions()))

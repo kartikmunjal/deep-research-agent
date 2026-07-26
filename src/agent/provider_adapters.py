@@ -27,7 +27,11 @@ class _OpenAIMessages:
         response = self.client.chat.completions.create(
             model=model,
             messages=messages,
-            max_completion_tokens=max_tokens,
+            # GPT-5 reasoning tokens share the completion budget. A larger ceiling
+            # prevents valid short JSON answers from failing after hidden reasoning;
+            # billing remains based on actual usage.
+            max_completion_tokens=max(max_tokens, 1024),
+            reasoning_effort="minimal",
             response_format={"type": "json_object"},
         )
         choice = response.choices[0]
