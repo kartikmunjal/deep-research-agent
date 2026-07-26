@@ -10,6 +10,7 @@ python3 -m eval.safety_v4.harness --model claude-sonnet-4-6 --max-cost-usd 2
 python3 -m eval.safety_v4.harness --model claude-haiku-4-5 --max-cost-usd 2
 python3 -m eval.safety_v4.harness --provider openai \
   --model gpt-5-mini-2025-08-07 --max-cost-usd 1
+python3 -m eval.safety_v4.report <three artifacts> --output eval/safety_v4/results/report.md
 ```
 
 Every paid decision is checkpointed. Use `--resume` after interruption. Do not
