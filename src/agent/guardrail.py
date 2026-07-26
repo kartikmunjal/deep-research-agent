@@ -175,13 +175,14 @@ class ConstitutionalGuardrail:
             # JSON classifier output is generated. That is a valid blocked outcome,
             # not a missing trial. Preserve the provider stop reason for auditing.
             stop_reason = str(getattr(response, "stop_reason", "unknown"))
+            detector = "provider_length" if stop_reason == "length" else "provider_refusal"
             return GuardrailDecision(
                 allow=False,
                 reason=f"Provider returned no text (stop_reason={stop_reason}); treated as refusal.",
                 category="harmful_request",
                 mode=self.mode,
                 surface=surface,
-                detector="provider_refusal",
+                detector=detector,
             )
         raw = "\n".join(text_blocks)
         raw = re.sub(r"^```(?:json)?\s*", "", raw)

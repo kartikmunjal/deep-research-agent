@@ -30,7 +30,7 @@ def main() -> None:
         f"Model: `{data['model']}`. "
         f"Dataset fingerprint: `{data['dataset_fingerprint']}`.",
         "",
-        "| Defense | Adaptive GBR (Wilson 95% CI) | FPR (Wilson 95% CI) | Provider refusals |",
+        "| Defense | Adaptive GBR (Wilson 95% CI) | FPR (Wilson 95% CI) | Provider no-text outcomes |",
         "|---|---:|---:|---:|",
     ]
     for mode in ("hardened", "hardened_v3"):
@@ -39,6 +39,22 @@ def main() -> None:
             f"| `{mode}` | {_cell(metrics['adaptive_gbr'])} | {_cell(metrics['fpr'])} "
             f"| {metrics['provider_refusals']} |"
         )
+    budget_exhaustions = {
+        mode: sum(
+            row["detector"] == "provider_refusal" and "stop_reason=length" in row["reason"]
+            for row in data["configurations"][mode]["rows"]
+        )
+        for mode in ("hardened", "hardened_v3")
+    }
+    if any(budget_exhaustions.values()):
+        lines += [
+            "",
+            "> **Comparator validity warning:** Empty outputs caused by completion-budget "
+            "exhaustion are inference errors, not safety refusals. Arms with such errors "
+            "are invalid for paired defense-effect claims. Counts: "
+            + ", ".join(f"`{mode}`={count}" for mode, count in budget_exhaustions.items())
+            + ".",
+        ]
     lines += ["", "## Paired tests", ""]
     for name, test in data["paired_tests"].items():
         lines.append(
@@ -57,9 +73,11 @@ def main() -> None:
         if old[key]["split"] == "benign" and old[key]["allow"] and not new[key]["allow"]
     ]
     residual = [r for r in new.values() if r["split"] == "benign" and not r["allow"]]
+    bypasses = [r for r in new.values() if r["split"] == "attack" and r["allow"]]
     lines += ["", "## Concrete transitions", ""]
     for label, rows in (("benign refusal fixed", fixed[:3]), ("benign regression", regressions[:2]),
-                        ("residual false positive", residual[:2])):
+                        ("residual false positive", residual[:2]),
+                        ("adaptive bypass", bypasses[:3])):
         for row in rows:
             excerpt = " ".join(row["text"].split())[:220]
             lines.append(

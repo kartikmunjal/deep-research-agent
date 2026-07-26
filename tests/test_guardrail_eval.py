@@ -71,6 +71,25 @@ def test_empty_provider_refusal_is_auditable_blocked_trial():
     assert "stop_reason=refusal" in decision.reason
 
 
+def test_empty_length_response_is_not_labeled_provider_refusal():
+    class LengthResponse:
+        content = []
+        usage = object()
+        stop_reason = "length"
+
+    class LengthMessages:
+        def create(self, **kwargs):
+            return LengthResponse()
+
+    class LengthClient:
+        messages = LengthMessages()
+
+    decision = ConstitutionalGuardrail(LengthClient(), "test", "baseline").evaluate(
+        "test", "user_prompt"
+    )
+    assert decision.detector == "provider_length"
+
+
 def test_guardrail_normalizes_trailing_provider_text():
     class TrailingMessages:
         def create(self, **kwargs):
