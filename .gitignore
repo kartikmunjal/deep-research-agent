@@ -15,6 +15,7 @@ eval/results/*.json
 eval/safety/results/*.json
 eval/safety_v2/results/*.json
 eval/safety_v3/results/*.json
+eval/safety_v4/results/*.json
 reviewer_*.csv
 agreement.json
 model_matrix.json

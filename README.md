@@ -164,6 +164,10 @@ quote-aware detection, deterministic tool authorization, safe canary execution,
 blinded human-label workflows, and cross-model/temporal replication validation.
 See `RESEARCH_PLAN_V3.md` and `eval/safety_v3/README.md`.
 
+V4 addresses the cross-provider typoglycemia failures using a development/test
+split and a held-out three-family typo benchmark. See `RESEARCH_PLAN_V4.md` and
+`eval/safety_v4/README.md`.
+
 ## Key Quantitative Results
 
 - Planning improves completeness relative to no-planning baseline.
