@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "benchmark": "gaia-benchmark/GAIA",
+  "split": "2023_validation",
+  "level": 1,
+  "task_set_fingerprint": "662339b1469b4a05bf30af059d141ab4dfae0d8c028a5c6afebec8715b43728e",
+  "result_mode": "live_api_and_frozen_replay",
+  "runs": [
+    {
+      "mode": "live",
+      "model": "claude-sonnet-4-6",
+      "accuracy": {
+        "events": 31,
+        "n_trials": 53,
+        "rate": 0.5849056603773585,
+        "ci_95": [
+          0.45094422181344374,
+          0.7073909122018601
+        ],
+        "ci_method": "Wilson score"
+      },
+      "attachment_accuracy": {
+        "events": 7,
+        "n_trials": 11,
+        "rate": 0.6363636363636364,
+        "ci_95": [
+          0.35380117450784887,
+          0.8483352890463243
+        ],
+        "ci_method": "Wilson score"
+      },
+      "non_attachment_accuracy": {
+        "events": 24,
+        "n_trials": 42,
+        "rate": 0.5714285714285714,
+        "ci_95": [
+          0.4220623987810458,
+          0.7088234882381393
+        ],
+        "ci_method": "Wilson score"
+      },
+      "failure_modes": {
+        "reasoning_error": 20,
+        "tool_error": 2
+      },
+      "tool_calls": {
+        "calculator": 24,
+        "read_file": 15,
+        "web_search": 138
+      },
+      "tool_errors": {
+        "calculator_error": 1,
+        "file_not_found": 4,
+        "search_error": 1
+      },
+      "usage": {
+        "input_tokens": 1635267,
+        "output_tokens": 34488,
+        "estimated_anthropic_usd": 5.4231
+      }
+    },
+    {
+      "mode": "replay",
+      "model": "claude-sonnet-4-6",
+      "accuracy": {
+        "events": 19,
+        "n_trials": 53,
+        "rate": 0.3584905660377358,
+        "ci_95": [
+          0.2430195255280876,
+          0.49308858444640524
+        ],
+        "ci_method": "Wilson score"
+      },
+      "attachment_accuracy": {
+        "events": 5,
+        "n_trials": 11,
+        "rate": 0.45454545454545453,
+        "ci_95": [
+          0.21271271622459764,
+          0.719908462590678
+        ],
+        "ci_method": "Wilson score"
+      },
+      "non_attachment_accuracy": {
+        "events": 14,
+        "n_trials": 42,
+        "rate": 0.3333333333333333,
+        "ci_95": [
+          0.2101246707235726,
+          0.48447492623166194
+        ],
+        "ci_method": "Wilson score"
+      },
+      "failure_modes": {
+        "reasoning_error": 14,
+        "retrieval_error": 4,
+        "tool_error": 16
+      },
+      "tool_calls": {
+        "calculator": 26,
+        "read_file": 23,
+        "web_search": 249
+      },
+      "tool_errors": {
+        "calculator_error": 1,
+        "file_not_found": 10,
+        "replay_miss": 225
+      },
+      "usage": {
+        "input_tokens": 1160171,
+        "output_tokens": 35640,
+        "estimated_anthropic_usd": 4.0151
+      }
+    }
+  ],
+  "paired_comparison": {
+    "n_pairs": 53,
+    "live_only_correct": 14,
+    "replay_only_correct": 2,
+    "discordant_pairs": 16,
+    "accuracy_difference_live_minus_replay": 0.22641509433962265,
+    "difference_bootstrap_95ci": [
+      0.09433962264150944,
+      0.3584905660377358
+    ],
+    "bootstrap_resamples": 10000,
+    "exact_mcnemar_p_two_sided": 0.004180908203125
+  },
+  "privacy": "No gated task content, answers, predictions, task IDs, or tool outputs."
+}

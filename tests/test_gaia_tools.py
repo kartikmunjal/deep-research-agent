@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from eval.gaia.harness import failure_mode, final_answer
+from eval.gaia.report import exact_mcnemar, paired_difference_ci
 from eval.gaia.scoring import exact_match, summarize
 from eval.gaia.tools import calculate, read_file, transcribe_audio
 
@@ -124,6 +125,13 @@ def test_failure_attribution_and_final_answer():
         )
         == "reasoning_error"
     )
+
+
+def test_paired_inference_is_deterministic():
+    live = [True, True, False, True]
+    replay = [False, True, False, False]
+    assert exact_mcnemar(2, 0) == 0.5
+    assert paired_difference_ci(live, replay) == [0.0, 1.0]
     assert (
         failure_mode(
             correct=False,

@@ -27,15 +27,27 @@ For portfolio rigor, only treat summaries from `result_mode=live_api` as benchma
 
 ## Official GAIA Validation Track
 
-The repository now includes a separate attachment-aware harness for the gated,
-official `gaia-benchmark/GAIA` 2023 validation set. It executes real Tavily
-search, restricted arithmetic, and file readers for PDF, spreadsheet, document,
-text, and image attachments. Per-task data remains private under GAIA's terms;
-only aggregate artifacts may be committed.
+The attachment-aware harness evaluates the gated official
+`gaia-benchmark/GAIA` 2023 Level-1 validation split with real Tavily
+search, restricted arithmetic, local document/image readers, and approved
+OpenAI audio transcription. Gated questions, answers, predictions, task IDs,
+attachments, and tool outputs remain private.
 
-See [the preregistration](RESEARCH_PLAN_GAIA.md) and
-[evaluation instructions](eval/gaia/README.md). No official score is claimed
-until a complete Level-1 live run is available.
+| Mode | Accuracy (Wilson 95% CI) | Attachment tasks | No-attachment tasks |
+|---|---:|---:|---:|
+| Live tools | 31/53 (58.5%; 45.1–70.7%) | 7/11 (63.6%; 35.4–84.8%) | 24/42 (57.1%; 42.2–70.9%) |
+| Frozen exact-call replay | 19/53 (35.8%; 24.3–49.3%) | 5/11 (45.5%; 21.3–72.0%) | 14/42 (33.3%; 21.0–48.4%) |
+
+Live exceeded replay by 22.6 percentage points (paired bootstrap 95% CI 9.4–35.8; N_pairs=53; exact McNemar p=0.0042). Live-only correct=14; replay-only correct=2.
+
+This rejects the simplistic interpretation of mocked tools as a reasoning
+ceiling. Even at temperature 0, the model often reformulated tool arguments;
+exact-call replay then missed recorded observations. The defensible real-world
+result is the live score. Live failures were 20 reasoning errors and 2 step-limit/tool errors; no provider errors remained in the completed artifact.
+
+See the [preregistration](RESEARCH_PLAN_GAIA.md),
+[evaluation instructions](eval/gaia/README.md), and
+[sanitized full report](eval/gaia/results/official_gaia_l1_20260726.md).
 
 ## Historical Self-Authored GAIA-Style Snapshot (Not GAIA)
 
