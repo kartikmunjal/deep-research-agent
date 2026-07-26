@@ -25,6 +25,11 @@ execution, or the model provider?
 - Live tools: Tavily Advanced search (maximum 8 results/call), restricted-AST
   calculator, and read-only attachment reader.
 - File access is confined to the downloaded GAIA snapshot.
+- Audio attachments are transcribed with `gpt-4o-mini-transcribe` through the
+  OpenAI API. This provider boundary was added before the first valid full run
+  after an integrity pilot revealed that official Level 1 contains MP3 files;
+  the user explicitly approved sending those two gated audio attachments solely
+  for transcription. The path-defective pilot is marked invalid.
 
 ## Comparison
 

@@ -23,8 +23,9 @@ Tools are genuine:
 - `calculator` evaluates a restricted arithmetic AST; it never returns canned
   values and never calls Python `eval`.
 - `read_file` reads PDFs, XLSX/XLSM workbooks, DOCX, CSV/TSV, structured text,
-  and sends image attachments to the model as image blocks. Paths are confined
-  to the private GAIA snapshot.
+  PPTX, and sends image attachments to the model as image blocks. Paths are
+  confined to the private GAIA snapshot. Audio files are sent only to
+  OpenAI `gpt-4o-mini-transcribe`, following explicit user approval.
 
 Failure labels are mutually exclusive: `reasoning_error`, `tool_error`,
 `retrieval_error`, `file_read_error`, and `provider_error`.

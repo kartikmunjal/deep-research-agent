@@ -2,7 +2,7 @@ from pathlib import Path
 
 from eval.gaia.harness import failure_mode, final_answer
 from eval.gaia.scoring import exact_match, summarize
-from eval.gaia.tools import calculate, read_file
+from eval.gaia.tools import calculate, read_file, transcribe_audio
 
 
 def test_calculator_executes_restricted_arithmetic():
@@ -66,6 +66,26 @@ def test_huggingface_snapshot_symlink_is_allowed(tmp_path: Path):
     result = read_file("attachment.txt", snapshot_root)
     assert result.error is None
     assert "trusted cached evidence" in result.text
+
+
+def test_audio_transcription_executes_approved_provider_call(tmp_path: Path):
+    audio = tmp_path / "evidence.mp3"
+    audio.write_bytes(b"test audio bytes")
+
+    class Transcriptions:
+        def create(self, **kwargs):
+            assert kwargs["model"] == "gpt-4o-mini-transcribe"
+            assert kwargs["file"].read() == b"test audio bytes"
+            return type("Response", (), {"text": "spoken evidence"})()
+
+    fake = type(
+        "Client",
+        (),
+        {"audio": type("Audio", (), {"transcriptions": Transcriptions()})()},
+    )()
+    result = transcribe_audio(audio, client=fake)
+    assert result.error is None
+    assert result.text == "spoken evidence"
 
 
 def test_exact_match_and_wilson_summary():

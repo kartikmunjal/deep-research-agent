@@ -8,6 +8,7 @@ import csv
 import json
 import math
 import operator
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -103,6 +104,29 @@ def web_search(client: Any, query: str, max_results: int = 5) -> ToolResult:
         return ToolResult(text=f"Search error: {exc}", error="search_error")
 
 
+def transcribe_audio(path: Path, client: Any | None = None) -> ToolResult:
+    """Transcribe a GAIA audio attachment through the approved OpenAI boundary."""
+    if client is None:
+        if not os.getenv("OPENAI_API_KEY"):
+            return ToolResult(
+                "OPENAI_API_KEY is required for audio transcription.",
+                "file_read_error",
+            )
+        from openai import OpenAI
+
+        client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    try:
+        with path.open("rb") as handle:
+            response = client.audio.transcriptions.create(
+                model="gpt-4o-mini-transcribe",
+                file=handle,
+            )
+        text = response.text.strip()
+        return ToolResult(text=text or "[Audio transcription was empty]")
+    except Exception as exc:
+        return ToolResult(f"Audio transcription error: {exc}", "file_read_error")
+
+
 def read_file(path_value: str, attachment_root: Path, max_chars: int = 50_000) -> ToolResult:
     """Read a GAIA attachment without permitting access outside its cache root."""
     path = Path(path_value)
@@ -165,6 +189,8 @@ def read_file(path_value: str, attachment_root: Path, max_chars: int = 50_000) -
                     if getattr(shape, "has_text_frame", False)
                 )
             text = "\n".join(chunks)
+        elif suffix in {".mp3", ".wav", ".m4a", ".flac", ".ogg"}:
+            return transcribe_audio(path)
         elif suffix in {".png", ".jpg", ".jpeg", ".webp", ".gif"}:
             media = {
                 ".png": "image/png",
