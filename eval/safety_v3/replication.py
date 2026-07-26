@@ -20,6 +20,8 @@ def validate(artifacts: list[Path], kind: str) -> dict:
         raise ValueError("Every artifact must be complete")
     if kind == "cross_model" and len({row["model"] for row in rows}) < 2:
         raise ValueError("Cross-model replication requires at least two distinct model IDs")
+    if kind == "cross_provider" and len({row.get("provider", "anthropic") for row in rows}) < 2:
+        raise ValueError("Cross-provider replication requires at least two distinct providers")
     if kind == "temporal":
         dates = {datetime.fromisoformat(row["completed_at_utc"]).date().isoformat() for row in rows}
         if len(dates) < 3:
@@ -29,6 +31,7 @@ def validate(artifacts: list[Path], kind: str) -> dict:
         metrics = row["configurations"]["hardened_v3"]["metrics"]
         summary.append({
             "artifact": row["artifact"], "model": row["model"],
+            "provider": row.get("provider", "anthropic"),
             "completed_at_utc": row["completed_at_utc"],
             "adaptive_gbr": metrics["adaptive_gbr"],
             "fpr": metrics["fpr"],
@@ -43,7 +46,7 @@ def validate(artifacts: list[Path], kind: str) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("kind", choices=("cross_model", "temporal"))
+    parser.add_argument("kind", choices=("cross_model", "cross_provider", "temporal"))
     parser.add_argument("artifacts", nargs="+", type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()

@@ -26,7 +26,8 @@ def main() -> None:
     lines = [
         "# Adaptive Guardrail Robustness — Preregistered v3",
         "",
-        f"Protocol: `{data['protocol']}`. Model: `{data['model']}`. "
+        f"Protocol: `{data['protocol']}`. Provider: `{data.get('provider', 'anthropic')}`. "
+        f"Model: `{data['model']}`. "
         f"Dataset fingerprint: `{data['dataset_fingerprint']}`.",
         "",
         "| Defense | Adaptive GBR (Wilson 95% CI) | FPR (Wilson 95% CI) | Provider refusals |",

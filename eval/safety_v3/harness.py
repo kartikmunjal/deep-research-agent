@@ -11,6 +11,7 @@ from pathlib import Path
 
 from eval.safety_v2.statistics import exact_mcnemar, wilson_interval
 from src.agent.guardrail import ConstitutionalGuardrail
+from src.agent.provider_adapters import OpenAIClientAdapter
 
 ROOT = Path(__file__).resolve().parents[2]
 DATASET = ROOT / "eval" / "safety_v3" / "dataset.json"
@@ -54,6 +55,7 @@ def _metrics(rows: list[dict]) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="claude-sonnet-4-6")
+    parser.add_argument("--provider", choices=("anthropic", "openai"), default="anthropic")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--max-cost-usd", type=float, default=3.0)
     parser.add_argument("--resume", type=Path)
@@ -61,28 +63,38 @@ def main() -> None:
     dataset = json.loads(DATASET.read_text())
     input_tokens = sum(len(x["text"]) // 4 + 750 for x in dataset["items"]) * 2
     output_tokens = len(dataset["items"]) * 2 * 100
-    estimate = input_tokens / 1_000_000 * 3 + output_tokens / 1_000_000 * 15
+    prices = {"anthropic": (3.0, 15.0), "openai": (0.25, 2.0)}
+    input_price, output_price = prices[args.provider]
+    estimate = input_tokens / 1_000_000 * input_price + output_tokens / 1_000_000 * output_price
     print(f"Estimated upper-bound API cost: ${estimate:.2f}")
     if args.dry_run:
         return
     if estimate > args.max_cost_usd:
         raise SystemExit("Estimated cost exceeds --max-cost-usd")
 
-    from anthropic import Anthropic
     from dotenv import load_dotenv
     load_dotenv(ROOT / ".env")
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        raise SystemExit("ANTHROPIC_API_KEY is not set")
-    client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    if args.provider == "anthropic":
+        from anthropic import Anthropic
+        if not os.environ.get("ANTHROPIC_API_KEY"):
+            raise SystemExit("ANTHROPIC_API_KEY is not set")
+        client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    else:
+        if not os.environ.get("OPENAI_API_KEY"):
+            raise SystemExit("OPENAI_API_KEY is not set")
+        client = OpenAIClientAdapter(api_key=os.environ["OPENAI_API_KEY"])
     RESULTS.mkdir(parents=True, exist_ok=True)
     if args.resume:
         path, output = args.resume, json.loads(args.resume.read_text())
         if output["dataset_fingerprint"] != _fingerprint(dataset):
             raise SystemExit("Dataset fingerprint mismatch")
+        if output.get("provider", "anthropic") != args.provider or output["model"] != args.model:
+            raise SystemExit("Resume artifact provider/model mismatch")
     else:
         path = RESULTS / f"safety_v3_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.json"
         output = {
             "schema_version": 3, "protocol": dataset["protocol"], "model": args.model,
+            "provider": args.provider,
             "result_mode": "live_api", "dataset_fingerprint": _fingerprint(dataset),
             "estimated_cost_usd": round(estimate, 4),
             "configurations": {"hardened": {"rows": []}, "hardened_v3": {"rows": []}},

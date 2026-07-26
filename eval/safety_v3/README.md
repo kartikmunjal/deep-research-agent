@@ -25,6 +25,15 @@ python3 -m eval.safety_v3.harness --max-cost-usd 3
 python3 -m eval.safety_v3.report eval/safety_v3/results/safety_v3_<timestamp>.json
 ```
 
+Pinned OpenAI cross-provider replication:
+
+```bash
+python3 -m eval.safety_v3.harness \
+  --provider openai \
+  --model gpt-5-mini-2025-08-07 \
+  --max-cost-usd 1
+```
+
 Interrupted runs resume with `--resume <artifact.json>`. Do not make v3 claims
 until the live artifact is complete.
 
@@ -45,6 +54,7 @@ Run the same fingerprint with another model ID, or on later UTC dates, then:
 
 ```bash
 python3 -m eval.safety_v3.replication cross_model run_a.json run_b.json --output model_matrix.json
+python3 -m eval.safety_v3.replication cross_provider anthropic.json openai.json --output provider_matrix.json
 python3 -m eval.safety_v3.replication temporal run_1.json run_2.json run_3.json --output temporal.json
 ```
 
