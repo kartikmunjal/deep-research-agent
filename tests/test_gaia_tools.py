@@ -23,6 +23,7 @@ def test_attachment_readers_execute_real_parsers(tmp_path: Path):
     from docx import Document
     from openpyxl import Workbook
     from PIL import Image
+    from pptx import Presentation
     from pypdf import PdfWriter
 
     workbook = Workbook()
@@ -41,11 +42,30 @@ def test_attachment_readers_execute_real_parsers(tmp_path: Path):
         writer.write(handle)
     assert read_file("evidence.pdf", tmp_path).error is None
 
+    presentation = Presentation()
+    slide = presentation.slides.add_slide(presentation.slide_layouts[5])
+    slide.shapes.title.text = "slide evidence"
+    presentation.save(tmp_path / "evidence.pptx")
+    assert "slide evidence" in read_file("evidence.pptx", tmp_path).text
+
     Image.new("RGB", (2, 2), "white").save(tmp_path / "evidence.png")
     image = read_file("evidence.png", tmp_path)
     assert image.error is None
     assert image.image_media_type == "image/png"
     assert image.image_base64
+
+
+def test_huggingface_snapshot_symlink_is_allowed(tmp_path: Path):
+    blob_root = tmp_path / "blobs"
+    snapshot_root = tmp_path / "snapshots" / "revision"
+    blob_root.mkdir()
+    snapshot_root.mkdir(parents=True)
+    blob = blob_root / "attachment.txt"
+    blob.write_text("trusted cached evidence")
+    (snapshot_root / "attachment.txt").symlink_to(blob)
+    result = read_file("attachment.txt", snapshot_root)
+    assert result.error is None
+    assert "trusted cached evidence" in result.text
 
 
 def test_exact_match_and_wilson_summary():

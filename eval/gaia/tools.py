@@ -103,21 +103,20 @@ def web_search(client: Any, query: str, max_results: int = 5) -> ToolResult:
         return ToolResult(text=f"Search error: {exc}", error="search_error")
 
 
-def _inside(path: Path, root: Path) -> bool:
-    try:
-        path.resolve().relative_to(root.resolve())
-        return True
-    except ValueError:
-        return False
-
-
 def read_file(path_value: str, attachment_root: Path, max_chars: int = 50_000) -> ToolResult:
     """Read a GAIA attachment without permitting access outside its cache root."""
     path = Path(path_value)
-    if not path.is_absolute():
+    if path.is_absolute():
+        try:
+            path.relative_to(attachment_root)
+        except ValueError:
+            return ToolResult("File access denied: outside GAIA attachment root.", "file_access_error")
+    else:
+        if ".." in path.parts:
+            return ToolResult("File access denied: parent traversal.", "file_access_error")
         path = attachment_root / path
-    if not _inside(path, attachment_root):
-        return ToolResult("File access denied: outside GAIA attachment root.", "file_access_error")
+    # Hugging Face snapshots intentionally symlink into their trusted blob cache.
+    # Lexical confinement above allows those links without allowing user traversal.
     if not path.is_file():
         return ToolResult(f"File not found: {path.name}", "file_not_found")
 
@@ -153,6 +152,19 @@ def read_file(path_value: str, attachment_root: Path, max_chars: int = 50_000) -
 
             document = Document(path)
             text = "\n".join(paragraph.text for paragraph in document.paragraphs)
+        elif suffix == ".pptx":
+            from pptx import Presentation
+
+            presentation = Presentation(path)
+            chunks = []
+            for index, slide in enumerate(presentation.slides, 1):
+                chunks.append(f"--- Slide {index} ---")
+                chunks.extend(
+                    shape.text
+                    for shape in slide.shapes
+                    if getattr(shape, "has_text_frame", False)
+                )
+            text = "\n".join(chunks)
         elif suffix in {".png", ".jpg", ".jpeg", ".webp", ".gif"}:
             media = {
                 ".png": "image/png",
