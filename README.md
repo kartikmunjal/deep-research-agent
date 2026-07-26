@@ -25,23 +25,35 @@ Unanswerable behavior (full pipeline): uncertainty correctly surfaced in **87.5%
 
 For portfolio rigor, only treat summaries from `result_mode=live_api` as benchmark claims. Offline fixture runs are for zero-cost smoke testing only.
 
-## Historical GAIA L1 Snapshot (Unverified Reference)
+## Official GAIA Validation Track
 
-The eval harness includes 12 GAIA Level-1 tasks (category `gaia_l1`)—the
-simplest tier of the GAIA benchmark, covering well-defined single-hop factual
-lookups with unambiguous answers. As with the pipeline snapshot above, the
-current branch does not contain a supporting `live_api` artifact, so these
-percentages are historical context rather than current benchmark claims.
+The repository now includes a separate attachment-aware harness for the gated,
+official `gaia-benchmark/GAIA` 2023 validation set. It executes real Tavily
+search, restricted arithmetic, and file readers for PDF, spreadsheet, document,
+text, and image attachments. Per-task data remains private under GAIA's terms;
+only aggregate artifacts may be committed.
 
-GAIA L1 is a useful sanity-check floor: an agent that cannot reliably answer these should not be trusted on harder multi-hop or adversarial tasks.
+See [the preregistration](RESEARCH_PLAN_GAIA.md) and
+[evaluation instructions](eval/gaia/README.md). No official score is claimed
+until a complete Level-1 live run is available.
 
-| Configuration | GAIA L1 Accuracy |
+## Historical Self-Authored GAIA-Style Snapshot (Not GAIA)
+
+The general eval harness contains 12 self-authored, single-hop questions under
+the legacy category name `gaia_l1`. They are not questions from the official
+GAIA dataset. Their synthetic fixture percentages below are retained only to
+document prior repository behavior and must not be compared with published
+GAIA or GPT-4 scores.
+
+These items are useful only as a zero-cost plumbing smoke test.
+
+| Configuration | Self-authored fixture accuracy |
 |---|:---:|
 | No planning, no verification | 67% |
 | Planning, no verification | 83% |
 | Planning + verification (full pipeline) | 92% |
 
-Run GAIA-only: `python3 -m eval.harness --category gaia_l1`
+Run this legacy smoke fixture: `python3 -m eval.harness --offline --category gaia_l1`
 
 ## Cost / Latency Pareto
 

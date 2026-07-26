@@ -16,6 +16,12 @@ dependencies = [
   "python-dotenv>=1.0.0",
   "pandas>=2.0.0",
   "tqdm>=4.65.0",
+  "huggingface-hub>=0.34.0",
+  "datasets>=4.0.0",
+  "pypdf>=5.0.0",
+  "openpyxl>=3.1.0",
+  "python-docx>=1.1.0",
+  "Pillow>=11.0.0",
 ]
 
 [project.optional-dependencies]
