@@ -235,6 +235,11 @@ def main() -> None:
     parser.add_argument("--max-steps", type=int, default=12)
     parser.add_argument("--max-cost-usd", type=float, required=True)
     parser.add_argument("--resume", type=Path)
+    parser.add_argument(
+        "--retry-provider-errors",
+        action="store_true",
+        help="With --resume, remove and retry only rows that ended in provider_error.",
+    )
     args = parser.parse_args()
     if args.mode == "replay" and not args.replay_artifact:
         parser.error("--replay-artifact is required in replay mode")
@@ -279,6 +284,18 @@ def main() -> None:
             "rows": [],
         }
     )
+    if args.retry_provider_errors:
+        if not args.resume:
+            parser.error("--retry-provider-errors requires --resume")
+        before = len(artifact["rows"])
+        artifact["rows"] = [
+            row for row in artifact["rows"] if row["failure_mode"] != "provider_error"
+        ]
+        removed = before - len(artifact["rows"])
+        artifact["summary"] = summarize(artifact["rows"])
+        artifact["provider_error_retries"] = artifact.get("provider_error_retries", 0) + removed
+        output.write_text(json.dumps(artifact, indent=2, ensure_ascii=False))
+        print(f"Removed {removed} provider-error rows for retry")
     completed = {item["task_id"] for item in artifact["rows"]}
     anthropic = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     tavily = (

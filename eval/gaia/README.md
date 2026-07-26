@@ -11,6 +11,8 @@ per-task artifacts are ignored by Git.
 ```bash
 python3 -m eval.gaia.harness --mode live --level 1 --limit 5 --max-cost-usd 1
 python3 -m eval.gaia.harness --mode live --level 1 --max-cost-usd 10 --resume <artifact>
+python3 -m eval.gaia.harness --mode live --level 1 --max-cost-usd 10 \
+  --resume <artifact> --retry-provider-errors
 python3 -m eval.gaia.harness --mode replay --level 1 --max-cost-usd 10 \
   --replay-artifact <completed-live-artifact>
 python3 -m eval.gaia.report <live-artifact> <replay-artifact> \
